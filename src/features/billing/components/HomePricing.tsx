@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
-import PricingService from "@/lib/pricing";
+import PricingService from "@/features/billing/services/pricing";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 const HomePricing = () => {
