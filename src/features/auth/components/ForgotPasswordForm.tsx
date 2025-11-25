@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { createSPASassClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ForgotPasswordForm() {
     const [email, setEmail] = useState('');
@@ -38,52 +43,50 @@ export default function ForgotPasswordForm() {
 
     if (success) {
         return (
-            <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                <div className="text-center">
+            <Card className="w-full shadow sm:rounded-lg">
+                <CardContent className="pt-6 text-center">
                     <div className="flex justify-center mb-4">
                         <CheckCircle className="h-16 w-16 text-green-500" />
                     </div>
 
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
                         Check your email
                     </h2>
 
-                    <p className="text-gray-600 mb-8">
+                    <p className="text-muted-foreground mb-8">
                         We have sent a password reset link to your email address.
                         Please check your inbox and follow the instructions to reset your password.
                     </p>
 
-                    <div className="mt-6 text-center text-sm">
-                        <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
+                    <div className="text-center text-sm">
+                        <Link href="/auth/login" className="font-medium text-primary hover:text-primary/80">
                             Return to login
                         </Link>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-                    Reset your password
-                </h2>
-            </div>
+        <Card className="w-full shadow sm:rounded-lg">
+            <CardHeader>
+                <CardTitle className="text-center text-2xl font-bold">Reset your password</CardTitle>
+                <CardDescription className="text-center">
+                    Enter your email address and we will send you a link to reset your password.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
 
-            {error && (
-                <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-                    {error}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email address
-                    </label>
-                    <div className="mt-1">
-                        <input
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
                             id="email"
                             name="email"
                             type="email"
@@ -91,30 +94,19 @@ export default function ForgotPasswordForm() {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                         />
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
-                        Enter your email address and we will send you a link to reset your password.
-                    </p>
-                </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex w-full justify-center rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-                    >
-                        {loading ? 'Send reset link' : 'Send reset link'}
-                    </button>
-                </div>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-                <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? 'Sending link...' : 'Send reset link'}
+                    </Button>
+                </form>
+            </CardContent>
+            <CardFooter className="flex justify-center">
+                <Link href="/auth/login" className="text-sm font-medium text-primary hover:text-primary/80">
                     Back to login
                 </Link>
-            </div>
-        </div>
+            </CardFooter>
+        </Card>
     );
 }

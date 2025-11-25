@@ -2,6 +2,7 @@
 
 import { createSPAClient } from '@/lib/supabase/client';
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 type Provider = 'github' | 'google' | 'facebook' | 'apple';
 
@@ -108,10 +109,11 @@ export default function SSOButtons({ onError }: SSOButtonsProps) {
                 {enabledProviders.map((provider) => {
                     const config = PROVIDER_CONFIGS[provider];
                     return (
-                        <button
+                        <Button
                             key={provider}
                             onClick={() => handleSSOLogin(provider)}
-                            className={`group relative flex h-11 items-center rounded-md border ${config.borderColor} px-6 transition-colors duration-200 ${config.bgColor} ${config.textColor}`}
+                            className={`group relative flex h-11 w-full items-center rounded-md border ${config.borderColor} px-6 transition-colors duration-200 ${config.bgColor} ${config.textColor} hover:${config.bgColor.split(' ')[1] || config.bgColor}`}
+                            variant="ghost"
                         >
                             <div className="absolute left-6">
                                 <div className="flex h-5 w-5 items-center justify-center">
@@ -119,9 +121,9 @@ export default function SSOButtons({ onError }: SSOButtonsProps) {
                                 </div>
                             </div>
                             <span className="mx-auto text-sm font-semibold">
-                Continue with {config.name}
-              </span>
-                        </button>
+                                Continue with {config.name}
+                            </span>
+                        </Button>
                     );
                 })}
             </div>

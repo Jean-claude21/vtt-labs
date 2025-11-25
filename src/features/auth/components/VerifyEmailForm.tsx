@@ -4,6 +4,10 @@ import { CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from "react";
 import { createSPASassClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function VerifyEmailForm() {
     const [email, setEmail] = useState('');
@@ -39,66 +43,66 @@ export default function VerifyEmailForm() {
     }
 
     return (
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <div className="text-center">
+        <Card className="w-full shadow sm:rounded-lg">
+            <CardContent className="pt-6 text-center">
                 <div className="flex justify-center mb-4">
                     <CheckCircle className="h-16 w-16 text-green-500" />
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-foreground mb-2">
                     Check your email
                 </h2>
 
-                <p className="text-gray-600 mb-8">
+                <p className="text-muted-foreground mb-8">
                     We&#39;ve sent you an email with a verification link.
                     Please check your inbox and click the link to verify your account.
                 </p>
 
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                         Didn&#39;t receive the email? Check your spam folder or enter your email to resend:
                     </p>
 
                     {error && (
-                        <div className="text-sm text-red-600 bg-red-50 rounded-md p-3">
-                            {error}
-                        </div>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     )}
 
                     {success && (
-                        <div className="text-sm text-green-600 bg-green-50 rounded-md p-3">
-                            Verification email has been resent successfully.
-                        </div>
+                        <Alert className="bg-green-50 text-green-600 border-green-200">
+                            <AlertDescription>Verification email has been resent successfully.</AlertDescription>
+                        </Alert>
                     )}
 
                     <div className="mt-4">
-                        <input
+                        <Input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter your email address"
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 text-sm"
                         />
                     </div>
 
-                    <button
-                        className="text-primary-600 hover:text-primary-500 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    <Button
+                        variant="link"
+                        className="text-primary hover:text-primary/80"
                         onClick={resendVerificationEmail}
                         disabled={loading}
                     >
                         {loading ? 'Sending...' : 'Click here to resend'}
-                    </button>
+                    </Button>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-200">
+                <div className="mt-8 pt-6 border-t border-border">
                     <Link
                         href="/auth/login"
-                        className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                        className="text-sm font-medium text-primary hover:text-primary/80"
                     >
                         Return to login
                     </Link>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

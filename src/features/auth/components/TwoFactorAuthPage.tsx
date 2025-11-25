@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSPASassClient } from '@/lib/supabase/client';
 import { MFAVerification } from '@/features/auth/components/MFAVerification';
+import { Loader2 } from 'lucide-react';
 
 export default function TwoFactorAuthPage() {
     const router = useRouter();
@@ -48,7 +49,7 @@ export default function TwoFactorAuthPage() {
     if (loading) {
         return (
             <div className="flex justify-center items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }

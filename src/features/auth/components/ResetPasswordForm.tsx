@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { createSPASassClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, Key } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ResetPasswordForm() {
     const [newPassword, setNewPassword] = useState('');
@@ -72,49 +77,44 @@ export default function ResetPasswordForm() {
 
     if (success) {
         return (
-            <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                <div className="text-center">
+            <Card className="w-full shadow sm:rounded-lg">
+                <CardContent className="pt-6 text-center">
                     <div className="flex justify-center mb-4">
                         <CheckCircle className="h-16 w-16 text-green-500" />
                     </div>
 
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
                         Password reset successful
                     </h2>
 
-                    <p className="text-gray-600 mb-8">
+                    <p className="text-muted-foreground mb-8">
                         Your password has been successfully reset.
                         You will be redirected to the app in a moment.
                     </p>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <Card className="w-full shadow sm:rounded-lg">
+            <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
-                    <Key className="h-12 w-12 text-primary-600" />
+                    <Key className="h-12 w-12 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-                    Set new password
-                </h2>
-            </div>
+                <CardTitle className="text-2xl font-bold">Set new password</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
 
-            {error && (
-                <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-                    {error}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-                        New Password
-                    </label>
-                    <div className="mt-1">
-                        <input
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="newPassword">New Password</Label>
+                        <Input
                             id="newPassword"
                             name="newPassword"
                             type="password"
@@ -122,17 +122,12 @@ export default function ResetPasswordForm() {
                             required
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                         />
                     </div>
-                </div>
 
-                <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                        Confirm New Password
-                    </label>
-                    <div className="mt-1">
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                        <Input
                             id="confirmPassword"
                             name="confirmPassword"
                             type="password"
@@ -140,21 +135,14 @@ export default function ResetPasswordForm() {
                             required
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                         />
                     </div>
-                </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex w-full justify-center rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" className="w-full" disabled={loading}>
                         {loading ? 'Resetting password...' : 'Reset password'}
-                    </button>
-                </div>
-            </form>
-        </div>
+                    </Button>
+                </form>
+            </CardContent>
+        </Card>
     );
 }

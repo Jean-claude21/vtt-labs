@@ -5,6 +5,11 @@ import {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SSOButtons from '@/features/auth/components/SSOButtons';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginForm() {
     const [email, setEmail] = useState('');
@@ -57,20 +62,24 @@ export default function LoginForm() {
 
 
     return (
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {error && (
-                <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-                    {error}
-                </div>
-            )}
+        <Card className="w-full shadow sm:rounded-lg">
+            <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-bold tracking-tight">Sign in</CardTitle>
+                <CardDescription>
+                    Enter your email and password to sign in to your account
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email address
-                    </label>
-                    <div className="mt-1">
-                        <input
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
                             id="email"
                             name="email"
                             type="email"
@@ -78,17 +87,13 @@ export default function LoginForm() {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                            placeholder="name@example.com"
                         />
                     </div>
-                </div>
 
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
-                    </label>
-                    <div className="mt-1">
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
                             id="password"
                             name="password"
                             type="password"
@@ -96,39 +101,32 @@ export default function LoginForm() {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                         />
                     </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                        <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                            Forgot your password?
-                        </Link>
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm">
+                            <Link href="/auth/forgot-password" className="font-medium text-primary hover:text-primary/80">
+                                Forgot your password?
+                            </Link>
+                        </div>
                     </div>
-                </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex w-full justify-center rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" className="w-full" disabled={loading}>
                         {loading ? 'Signing in...' : 'Sign in'}
-                    </button>
+                    </Button>
+                </form>
+
+                <SSOButtons onError={setError} />
+            </CardContent>
+            <CardFooter className="flex justify-center">
+                <div className="text-sm text-muted-foreground">
+                    Don&#39;t have an account?{' '}
+                    <Link href="/auth/register" className="font-medium text-primary hover:text-primary/80">
+                        Sign up
+                    </Link>
                 </div>
-            </form>
-
-            <SSOButtons onError={setError} />
-
-            <div className="mt-6 text-center text-sm">
-                <span className="text-gray-600">Don&#39;t have an account?</span>
-                {' '}
-                <Link href="/auth/register" className="font-medium text-primary-600 hover:text-primary-500">
-                    Sign up
-                </Link>
-            </div>
-        </div>
+            </CardFooter>
+        </Card>
     );
 }
