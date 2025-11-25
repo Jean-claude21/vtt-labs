@@ -1,0 +1,4 @@
+Specify Article
+
+https://medium.com/@hashaamkhan975/spec-driven-development-with-spec-kit-34c443e3eaf6
+
