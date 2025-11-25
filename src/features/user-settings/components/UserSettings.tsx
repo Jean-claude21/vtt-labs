@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
 import { Key, User, CheckCircle } from 'lucide-react';
@@ -105,36 +108,35 @@ export default function UserSettings() {
                             <CardDescription>Update your password</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form onSubmit={handlePasswordChange} className="space-y-4">
+                            <form onSubmit={handlePasswordChange} className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">New Password</label>
-                                    <input
+                                    <Label>New Password</Label>
+                                    <Input
                                         type="password"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         required
                                         minLength={6}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Confirm New Password</label>
-                                    <input
+                                    <Label>Confirm New Password</Label>
+                                    <Input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         required
                                         minLength={6}
                                     />
                                 </div>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                                >
-                                    {loading ? 'Updating...' : 'Update Password'}
-                                </button>
+                                <div className="pt-2">
+                                    <Button
+                                        type="submit"
+                                        disabled={loading}
+                                    >
+                                        {loading ? 'Updating...' : 'Update Password'}
+                                    </Button>
+                                </div>
                             </form>
                         </CardContent>
                     </Card>

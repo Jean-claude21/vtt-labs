@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, Download, Share2, Trash2, Loader2, FileIcon, AlertCircle, CheckCircle, Copy } from 'lucide-react';
@@ -195,18 +197,18 @@ export default function FileManagement() {
 
                     <div className="flex items-center justify-center w-full">
                         <label
-                            className={`w-full flex flex-col items-center px-4 py-6 bg-white rounded-lg shadow-lg tracking-wide border-2 cursor-pointer transition-colors ${
+                            className={`w-full flex flex-col items-center px-4 py-6 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
                                 isDragging
-                                    ? 'border-primary-500 border-dashed bg-primary-50'
-                                    : 'border-primary-600 hover:bg-primary-50'
+                                    ? 'border-primary bg-primary/10'
+                                    : 'border-muted-foreground/25 hover:bg-muted/50'
                             }`}
                             onDragEnter={handleDragEnter}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
                         >
-                            <Upload className="w-8 h-8"/>
-                            <span className="mt-2 text-base">
+                            <Upload className="w-8 h-8 text-muted-foreground"/>
+                            <span className="mt-2 text-base text-muted-foreground">
                                 {uploading
                                     ? 'Uploading...'
                                     : isDragging
@@ -229,42 +231,46 @@ export default function FileManagement() {
                             </div>
                         )}
                         {files.length === 0 ? (
-                            <p className="text-center text-gray-500">No files uploaded yet</p>
+                            <p className="text-center text-muted-foreground">No files uploaded yet</p>
                         ) : (
                             files.map((file) => (
                                 <div
                                     key={file.name}
-                                    className="flex items-center justify-between p-4 bg-white rounded-lg border"
+                                    className="flex items-center justify-between p-4 rounded-lg border bg-card text-card-foreground shadow-sm"
                                 >
                                     <div className="flex items-center space-x-3">
-                                        <FileIcon className="h-6 w-6 text-gray-400"/>
+                                        <FileIcon className="h-6 w-6 text-muted-foreground"/>
                                         <span className="font-medium">{file.name.split('/').pop()}</span>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                        <button
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             onClick={() => handleDownload(file.name)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
                                             title="Download"
                                         >
-                                            <Download className="h-5 w-5"/>
-                                        </button>
-                                        <button
+                                            <Download className="h-4 w-4"/>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             onClick={() => handleShare(file.name)}
-                                            className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors"
                                             title="Share"
                                         >
-                                            <Share2 className="h-5 w-5"/>
-                                        </button>
-                                        <button
+                                            <Share2 className="h-4 w-4"/>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             onClick={() => {
                                                 setFileToDelete(file.name);
                                                 setShowDeleteDialog(true);
                                             }}
-                                            className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                             title="Delete"
                                         >
-                                            <Trash2 className="h-5 w-5"/>
-                                        </button>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
                                     </div>
                                 </div>
                             ))
@@ -284,24 +290,26 @@ export default function FileManagement() {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="flex items-center space-x-2">
-                                <input
+                                <Input
                                     type="text"
                                     value={shareUrl}
                                     readOnly
-                                    className="flex-1 p-2 border rounded bg-gray-50"
+                                    className="flex-1"
                                 />
-                                <button
+                                <Button
+                                    variant="outline"
+                                    size="icon"
                                     onClick={() => copyToClipboard(shareUrl)}
-                                    className="p-2 text-primary-600 hover:bg-primary-50 rounded-full transition-colors relative"
+                                    className="relative"
                                 >
-                                    <Copy className="h-5 w-5"/>
+                                    <Copy className="h-4 w-4"/>
                                     {showCopiedMessage && (
                                         <span
-                                            className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded">
+                                            className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-md border">
                                             Copied!
                                         </span>
                                     )}
-                                </button>
+                                </Button>
                             </div>
                         </DialogContent>
                     </Dialog>

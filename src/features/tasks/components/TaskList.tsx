@@ -8,6 +8,8 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -17,6 +19,21 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs"
 import { CheckCircle, Loader2, Plus, Trash2, AlertCircle } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 
@@ -72,7 +89,7 @@ function CreateTaskDialog({ onTaskCreated }: CreateTaskDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-primary-600 text-white hover:bg-primary-700">
+                <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Task
                 </Button>
@@ -106,19 +123,17 @@ function CreateTaskDialog({ onTaskCreated }: CreateTaskDialogProps) {
                         />
                     </div>
                     <div className="flex items-center justify-between">
-                        <label className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="urgent"
                                 checked={isUrgent}
-                                onChange={(e) => setIsUrgent(e.target.checked)}
-                                className="rounded border-gray-300 focus:ring-primary-500"
+                                onCheckedChange={(checked) => setIsUrgent(checked as boolean)}
                             />
-                            <span className="text-sm">Mark as urgent</span>
-                        </label>
+                            <Label htmlFor="urgent">Mark as urgent</Label>
+                        </div>
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="bg-primary-600 text-white hover:bg-primary-700"
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Create Task
@@ -209,7 +224,7 @@ export default function TaskList() {
                     </div>
                     <CreateTaskDialog onTaskCreated={loadTasks} />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     {error && (
                         <Alert variant="destructive" className="mb-6">
                             <AlertCircle className="h-4 w-4" />
@@ -217,98 +232,95 @@ export default function TaskList() {
                         </Alert>
                     )}
 
-                    <div className="mb-6 flex gap-2">
-                        <Button
-                            variant={filter === null ? "default" : "secondary"}
-                            onClick={() => setFilter(null)}
-                            size="sm"
-                            className={filter === null ? "bg-primary-600 text-white hover:bg-primary-700" : ""}
-                        >
-                            All Tasks
-                        </Button>
-                        <Button
-                            variant={filter === false ? "default" : "secondary"}
-                            onClick={() => setFilter(false)}
-                            size="sm"
-                            className={filter === false ? "bg-primary-600 text-white hover:bg-primary-700" : ""}
-                        >
-                            Active
-                        </Button>
-                        <Button
-                            variant={filter === true ? "default" : "secondary"}
-                            onClick={() => setFilter(true)}
-                            size="sm"
-                            className={filter === true ? "bg-primary-600 text-white hover:bg-primary-700" : ""}
-                        >
-                            Completed
-                        </Button>
-                    </div>
+                    <Tabs defaultValue="all" className="w-full" onValueChange={(value) => {
+                        if (value === 'all') setFilter(null);
+                        if (value === 'active') setFilter(false);
+                        if (value === 'completed') setFilter(true);
+                    }}>
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="all">All Tasks</TabsTrigger>
+                            <TabsTrigger value="active">Active</TabsTrigger>
+                            <TabsTrigger value="completed">Completed</TabsTrigger>
+                        </TabsList>
 
-                    <div className="space-y-3 relative">
-                        {loading && (
-                            <div className="absolute inset-0 bg-background/50 flex items-center justify-center backdrop-blur-sm">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-                            </div>
-                        )}
-
-                        {tasks.length === 0 ? (
-                            <div className="text-center py-8">
-                                <p className="text-muted-foreground">No tasks found</p>
-                            </div>
-                        ) : (
-                            tasks.map((task) => (
-                                <div
-                                    key={task.id}
-                                    className={`p-4 border rounded-lg transition-colors ${
-                                        task.done ? 'bg-muted' : 'bg-card'
-                                    } ${
-                                        task.urgent && !task.done ? 'border-red-200' : 'border-border'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className={`font-medium ${task.done ? 'line-through text-muted-foreground' : ''}`}>
-                                                {task.title}
-                                            </h3>
-                                            {task.description && (
-                                                <p className="mt-1 text-sm text-muted-foreground">{task.description}</p>
-                                            )}
-                                            <div className="mt-2 flex items-center gap-2">
-                                                <span className="text-xs text-muted-foreground">
-                                                    Created: {new Date(task.created_at).toLocaleDateString()}
-                                                </span>
-                                                {task.urgent && !task.done && (
-                                                    <span className="px-2 py-0.5 text-xs bg-red-50 text-red-600 rounded-full">
-                                                        Urgent
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            {!task.done && (
-                                                <Button
-                                                    onClick={() => handleMarkAsDone(task.id)}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                >
-                                                    <CheckCircle className="h-5 w-5" />
-                                                </Button>
-                                            )}
-                                            <Button
-                                                onClick={() => handleRemoveTask(task.id)}
-                                                variant="ghost"
-                                                size="icon"
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            >
-                                                <Trash2 className="h-5 w-5" />
-                                            </Button>
-                                        </div>
-                                    </div>
+                        <div className="relative">
+                            {loading && (
+                                <div className="absolute inset-0 bg-background/50 flex items-center justify-center backdrop-blur-sm z-10">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
-                            ))
-                        )}
-                    </div>
+                            )}
+
+                            {tasks.length === 0 ? (
+                                <div className="text-center py-8 border rounded-lg">
+                                    <p className="text-muted-foreground">No tasks found</p>
+                                </div>
+                            ) : (
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-[50%]">Task</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Created</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {tasks.map((task) => (
+                                                <TableRow key={task.id} className={task.done ? "bg-muted/50" : ""}>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className={`font-medium ${task.done ? 'line-through text-muted-foreground' : ''}`}>
+                                                                {task.title}
+                                                            </span>
+                                                            {task.description && (
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    {task.description}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {task.urgent && !task.done && (
+                                                            <Badge variant="destructive">Urgent</Badge>
+                                                        )}
+                                                        {task.done && (
+                                                            <Badge variant="secondary">Done</Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {new Date(task.created_at).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            {!task.done && (
+                                                                <Button
+                                                                    onClick={() => handleMarkAsDone(task.id)}
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                >
+                                                                    <CheckCircle className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                            <Button
+                                                                onClick={() => handleRemoveTask(task.id)}
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </div>
+                    </Tabs>
                 </CardContent>
             </Card>
             <Confetti active={showConfetti} />

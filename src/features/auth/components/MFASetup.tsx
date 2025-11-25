@@ -193,7 +193,7 @@ export function MFASetup({ onStatusChange }: MFASetupProps) {
                 )}
 
                 {step === 'name' && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div className="space-y-2">
                             <Label htmlFor="friendly-name">Device Name</Label>
                             <Input
@@ -209,7 +209,7 @@ export function MFASetup({ onStatusChange }: MFASetupProps) {
                             </p>
                         </div>
 
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex justify-end space-x-3 pt-2">
                             <Button
                                 variant="outline"
                                 onClick={resetEnrollment}
@@ -228,7 +228,7 @@ export function MFASetup({ onStatusChange }: MFASetupProps) {
                 )}
 
                 {step === 'enroll' && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div className="flex justify-center">
                             {qr && (
                                 <img
@@ -250,7 +250,7 @@ export function MFASetup({ onStatusChange }: MFASetupProps) {
                             />
                         </div>
 
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex justify-end space-x-3 pt-2">
                             <Button
                                 variant="outline"
                                 onClick={resetEnrollment}
