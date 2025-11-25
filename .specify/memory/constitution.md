@@ -35,10 +35,7 @@ The `app/` directory is strictly for routing, layouts, and page entry points. It
 Database definitions (Tables, RPCs, Views) exist only within Supabase migrations, not in the application codebase.
 
 ### III. UI & UX Principles
-a. Design System: All UI is built using Shadcn UI components. Shared, global components reside in `components/ui/`.
-b. Responsive Design (Mobile-First): Styling MUST adopt a mobile-first approach. Default styles target small screens, with `md:` and `lg:` breakpoints for larger views.
-c. Accessibility (a11y): All components and pages MUST be fully keyboard-navigable, use semantic HTML, and meet WCAG AA contrast standards.
-d. UI States: Any component fetching data MUST explicitly handle and render for three states:
+b. Linear-like Design System: All UI MUST strictly follow a Linear-inspired design system: high density, minimalist layout, Zinc/New York palette, Inter font, reduced border-radius, and compact components. Shadcn UI is the base library, but all customizations must preserve this style. Shared, global components reside in `components/ui/`.
 - Loading: Use Skeleton components from Shadcn UI.
 - Empty: Display a clear, user-friendly message with a call-to-action.
 - Error: Display a simple error message with a retry mechanism.
@@ -57,7 +54,9 @@ b. Frontend:
 ### VI. Error Handling & User Feedback
 a. API Response: All Server Actions MUST return a standardized `{ data, error }` object.
 b. User Notifications: Feedback to the user (success or failure) MUST be displayed using a non-blocking Toast component. `alert()` is forbidden.
-c. Logging: Critical, unexpected server-side errors MUST be logged to an external service (e.g., Sentry, Logtail).
+
+### VIII. Design System Compliance
+All contributors MUST ensure every new UI or refactor matches the Linear-like design system described above. Any deviation requires explicit justification and review.
 
 ### VII. Code Quality & Consistency
 a. Reusability: Duplicated code is not acceptable and must be refactored into a shared utility, hook, or component.
@@ -68,4 +67,4 @@ b. Formatting: The project MUST be configured with ESLint and Prettier to enforc
 This constitution supersedes all other practices. Any deviation requires a formal amendment.
 Amendments are to be dated and justified at the end of this document.
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-25 | **Last Amended**: 2025-11-25
+**Version**: 1.1.0 | **Ratified**: 2025-11-25 | **Last Amended**: 2025-11-25
