@@ -1,7 +1,7 @@
 "use client";
 
-import UserSettings from '@/features/user-settings/components/user-settings';
+import UserSettingsPage from '@/features/user-settings/components/settings-page';
 
-export default function UserSettingsPage() {
-    return <UserSettings />;
+export default function SettingsPage() {
+    return <UserSettingsPage />;
 }

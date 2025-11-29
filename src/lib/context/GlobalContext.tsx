@@ -1,9 +1,8 @@
 // src/lib/context/GlobalContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
-
 
 type User = {
     email: string;
@@ -12,15 +11,27 @@ type User = {
 };
 
 type Profile = {
+    id: string;
+    email: string | null;
     full_name: string | null;
     avatar_url: string | null;
-    role: string;
+    role: 'admin' | 'user';
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+type ModuleAccess = {
+    module_slug: string;
+    enabled: boolean;
 };
 
 interface GlobalContextType {
     loading: boolean;
     user: User | null;
     profile: Profile | null;
+    moduleAccess: ModuleAccess[] | null;
+    isAdmin: boolean;
+    refreshProfile: () => Promise<void>;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -29,55 +40,69 @@ export function GlobalProvider({ children }: Readonly<{ children: React.ReactNod
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [moduleAccess, setModuleAccess] = useState<ModuleAccess[] | null>(null);
 
-    useEffect(() => {
-        async function loadData() {
-            try {
-                const supabase = await createSPASassClient();
-                const client = supabase.getSupabaseClient();
+    const loadData = useCallback(async () => {
+        try {
+            const supabase = await createSPASassClient();
+            const client = supabase.getSupabaseClient();
 
-                // Get user data
-                const { data: { user } } = await client.auth.getUser();
-                if (user) {
-                    setUser({
-                        email: user.email!,
-                        id: user.id,
-                        registered_at: new Date(user.created_at)
-                    });
+            // Get user data
+            const { data: { user: authUser } } = await client.auth.getUser();
+            if (authUser) {
+                setUser({
+                    email: authUser.email!,
+                    id: authUser.id,
+                    registered_at: new Date(authUser.created_at)
+                });
 
-                    // Fetch profile using raw query to bypass type checking
-                    // TODO: Regenerate Supabase types to include profiles table
-                    const { data: profileData } = await (client as unknown as { 
-                        from: (table: string) => { 
-                            select: (cols: string) => { 
-                                eq: (col: string, val: string) => { 
-                                    single: () => Promise<{ data: Profile | null }> 
-                                } 
-                            } 
-                        } 
-                    }).from('profiles')
-                        .select('full_name, avatar_url, role')
-                        .eq('id', user.id)
-                        .single();
+                // Fetch profile
+                const { data: profileData } = await client
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', authUser.id)
+                    .single();
 
-                    if (profileData) {
-                        setProfile(profileData);
-                    }
-                } else {
-                    throw new Error('User not found');
+                if (profileData) {
+                    setProfile(profileData as unknown as Profile);
                 }
 
-            } catch (error) {
-                console.error('Error loading data:', error);
-            } finally {
-                setLoading(false);
-            }
-        }
+                // Fetch module access
+                const { data: modulesData } = await client
+                    .from('user_module_access')
+                    .select('module_slug, enabled')
+                    .eq('user_id', authUser.id);
 
-        loadData();
+                if (modulesData) {
+                    setModuleAccess(modulesData as ModuleAccess[]);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const contextValue = useMemo(() => ({ loading, user, profile }), [loading, user, profile]);
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const refreshProfile = useCallback(async () => {
+        setLoading(true);
+        await loadData();
+    }, [loadData]);
+
+    const isAdmin = profile?.role === 'admin';
+
+    const contextValue = useMemo(() => ({ 
+        loading, 
+        user, 
+        profile, 
+        moduleAccess,
+        isAdmin,
+        refreshProfile,
+    }), [loading, user, profile, moduleAccess, isAdmin, refreshProfile]);
 
     return (
         <GlobalContext.Provider value={contextValue}>

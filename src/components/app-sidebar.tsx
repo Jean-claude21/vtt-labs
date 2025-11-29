@@ -2,83 +2,78 @@
 
 import * as React from "react"
 import {
-  Database,
   Home,
-  Settings2,
-  SquareTerminal,
-  Table,
+  Settings,
+  Shield,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar"
 import { useGlobal } from "@/lib/context/GlobalContext"
+import Link from "next/link"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, profile } = useGlobal()
+  const { user, profile, isAdmin } = useGlobal()
 
   const userData = {
-    name: profile?.full_name || user?.email || "User",
+    name: profile?.full_name || user?.email?.split('@')[0] || "User",
     email: user?.email || "",
     avatar: profile?.avatar_url || "",
   }
 
-  const teams = [
-    {
-      name: "VTT Labs",
-      logo: SquareTerminal,
-      plan: "Pro",
-    },
-  ]
-
   const navItems = [
     {
-      name: "Homepage",
+      name: "Dashboard",
       url: "/app",
       icon: Home,
     },
     {
-      name: "Example Storage",
-      url: "/app/storage",
-      icon: Database,
-    },
-    {
-      name: "Table",
-      url: "/app/table",
-      icon: Table,
+      name: "Settings",
+      url: "/app/user-settings",
+      icon: Settings,
     },
   ]
 
-  const navSettings = [
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "User Settings",
-          url: "/app/user-settings",
-        },
-      ],
-    },
-  ]
+  // Add admin link if user is admin
+  if (isAdmin) {
+    navItems.push({
+      name: "Admin",
+      url: "/app/admin",
+      icon: Shield,
+    })
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/app">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-red-500 text-white font-bold">
+                  V
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">VTT Labs</span>
+                  <span className="truncate text-xs text-muted-foreground">Workspace</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavProjects projects={navItems} title="Application" />
-        <NavMain items={navSettings} />
+        <NavProjects projects={navItems} title="Navigation" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
