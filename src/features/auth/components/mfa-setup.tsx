@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, CheckCircle, XCircle, Loader2, Smartphone, Plus } from 'lucide-react';
-import { Factor, MFAEnrollTOTPParams } from '@supabase/auth-js';
+import type { Factor, MFAEnrollTOTPParams } from '@supabase/supabase-js';
 
 interface MFASetupProps {
     readonly onStatusChange?: () => void;

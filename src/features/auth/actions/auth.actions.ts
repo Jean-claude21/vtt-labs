@@ -7,7 +7,7 @@
  * Validates input with Zod, delegates to service, returns standardized result.
  */
 
-import { createServerSassClient } from '@/lib/supabase/server';
+import { createSSRSassClient } from '@/lib/supabase/server';
 import { authService, type ActionResult } from '../services';
 import {
   loginSchema,
@@ -34,11 +34,11 @@ export async function loginAction(
   // 1. Validate input
   const validated = loginSchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   const result = await authService.login(client, validated.data);
 
@@ -66,11 +66,11 @@ export async function registerAction(
   // 1. Validate input
   const validated = registerSchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   const result = await authService.register(client, validated.data);
 
@@ -88,11 +88,11 @@ export async function forgotPasswordAction(
   // 1. Validate input
   const validated = forgotPasswordSchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   
   // Build redirect URL for password reset
@@ -114,11 +114,11 @@ export async function resetPasswordAction(
   // 1. Validate input
   const validated = resetPasswordSchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   const result = await authService.resetPassword(client, validated.data);
 
@@ -136,11 +136,11 @@ export async function verifyMFAAction(
   // 1. Validate input
   const validated = mfaVerifySchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   const result = await authService.verifyMFA(client, validated.data);
 
@@ -158,11 +158,11 @@ export async function resendVerificationEmailAction(
   // 1. Validate input
   const validated = verifyEmailSchema.safeParse(input);
   if (!validated.success) {
-    return { data: null, error: validated.error.errors[0]?.message || 'Invalid input' };
+    return { data: null, error: validated.error.issues[0]?.message || 'Invalid input' };
   }
 
   // 2. Get client and call service
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   const result = await authService.resendVerificationEmail(client, validated.data.email);
 
@@ -175,7 +175,7 @@ export async function resendVerificationEmailAction(
 // ============================================================================
 
 export async function logoutAction(): Promise<ActionResult<{ success: boolean }>> {
-  const sassClient = await createServerSassClient();
+  const sassClient = await createSSRSassClient();
   const client = sassClient.getSupabaseClient();
   return authService.logout(client);
 }

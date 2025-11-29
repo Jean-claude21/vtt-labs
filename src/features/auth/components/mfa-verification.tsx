@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createSPASassClient } from '@/lib/supabase/client';
 import { CheckCircle, Smartphone, Shield, Loader2 } from 'lucide-react';
-import { Factor } from '@supabase/auth-js';
+import type { Factor } from '@supabase/supabase-js';
 
 interface MFAVerificationProps {
     readonly onVerified: () => void;

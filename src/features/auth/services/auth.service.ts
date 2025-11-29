@@ -28,8 +28,8 @@ export type AuthClient = SupabaseClient<Database, 'public', 'public'>;
 
 export type MFAStatus = {
   requiresMFA: boolean;
-  currentLevel: string;
-  nextLevel: string;
+  currentLevel: string | null;
+  nextLevel: string | null;
 };
 
 export type LoginResult = {
@@ -151,7 +151,7 @@ export const authService = {
   ): Promise<ActionResult<{ success: boolean }>> {
     try {
       const { error } = await client.auth.updateUser({
-        password: input.password,
+        password: input.newPassword,
       });
 
       if (error) {

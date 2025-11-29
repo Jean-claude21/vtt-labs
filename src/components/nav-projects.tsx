@@ -27,18 +27,20 @@ import {
 
 export function NavProjects({
   projects,
-}: {
+  title = "Projects",
+}: Readonly<{
   projects: {
     name: string
     url: string
     icon: LucideIcon
   }[]
-}) {
+  title?: string
+}>) {
   const { isMobile } = useSidebar()
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>

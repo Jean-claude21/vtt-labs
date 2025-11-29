@@ -2,7 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Globe, Shield, Users, Key, Database, Clock } from 'lucide-react';
 import AuthAwareButtons from '@/features/auth/components/auth-aware-buttons';
-import HomePricing from "@/features/billing/components/HomePricing";
 
 export default function LandingPage() {
   const productName = process.env.NEXT_PUBLIC_PRODUCTNAME;
@@ -138,7 +137,7 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {features.map((feature, index) => (
                   <div
-                      key={index}
+                      key={feature.title}
                       className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                   >
                     <feature.icon className={`h-8 w-8 ${feature.color}`} />
@@ -150,7 +149,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <HomePricing />
+        {/* Pricing section - TODO: Add when billing module is ready */}
 
         <section className="py-24 bg-primary-600">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

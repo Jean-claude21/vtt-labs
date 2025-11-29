@@ -1,7 +1,7 @@
 // src/lib/context/GlobalContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
 
 
@@ -11,16 +11,24 @@ type User = {
     registered_at: Date;
 };
 
+type Profile = {
+    full_name: string | null;
+    avatar_url: string | null;
+    role: string;
+};
+
 interface GlobalContextType {
     loading: boolean;
-    user: User | null;  // Add this
+    user: User | null;
+    profile: Profile | null;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
-export function GlobalProvider({ children }: { children: React.ReactNode }) {
+export function GlobalProvider({ children }: Readonly<{ children: React.ReactNode }>) {
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);  // Add this
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
 
     useEffect(() => {
         async function loadData() {
@@ -36,6 +44,25 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
                         id: user.id,
                         registered_at: new Date(user.created_at)
                     });
+
+                    // Fetch profile using raw query to bypass type checking
+                    // TODO: Regenerate Supabase types to include profiles table
+                    const { data: profileData } = await (client as unknown as { 
+                        from: (table: string) => { 
+                            select: (cols: string) => { 
+                                eq: (col: string, val: string) => { 
+                                    single: () => Promise<{ data: Profile | null }> 
+                                } 
+                            } 
+                        } 
+                    }).from('profiles')
+                        .select('full_name, avatar_url, role')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profileData) {
+                        setProfile(profileData);
+                    }
                 } else {
                     throw new Error('User not found');
                 }
@@ -50,8 +77,10 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
         loadData();
     }, []);
 
+    const contextValue = useMemo(() => ({ loading, user, profile }), [loading, user, profile]);
+
     return (
-        <GlobalContext.Provider value={{ loading, user }}>
+        <GlobalContext.Provider value={contextValue}>
             {children}
         </GlobalContext.Provider>
     );

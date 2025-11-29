@@ -9,7 +9,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, Download, Share2, Trash2, Loader2, FileIcon, AlertCircle, CheckCircle, Copy } from 'lucide-react';
 import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
-import { FileObject } from '@supabase/storage-js';
+
+interface FileObject {
+    name: string;
+    id?: string;
+    updated_at?: string;
+    created_at?: string;
+    last_accessed_at?: string;
+    metadata?: Record<string, unknown>;
+}
 
 export default function FileManagement() {
     const { user } = useGlobal();

@@ -1,13 +1,13 @@
 <!--
 SYNC IMPACT REPORT
-Version: 2.1.1 → 2.2.0 (MINOR)
-Rationale: Auth UI component refactoring - Linear-style design, Zod validation, English text
+Version: 2.2.0 → 2.2.1 (PATCH)
+Rationale: TypeScript compilation fixes, Supabase types regeneration, UI spacing harmonization
 
 Modified Principles:
 - None
 
 Added Sections:
-- None (existing principles applied)
+- None
 
 Removed Sections:
 - None
@@ -20,37 +20,28 @@ Templates Status:
 - ✅ agent-file-template.md — Generic
 
 Implementation Applied:
-- ✅ src/features/auth/components/login-form.tsx — Linear-style, Zod validation, English
-- ✅ src/features/auth/components/register-form.tsx — Linear-style, Zod validation, English
-- ✅ src/features/auth/components/forgot-password-form.tsx — Linear-style, Zod validation, English
-- ✅ src/features/auth/components/reset-password-form.tsx — Linear-style, Zod validation, English
-- ✅ src/features/auth/components/verify-email-form.tsx — Linear-style, emerald success colors
-- ✅ src/features/auth/components/mfa-verification.tsx — Linear-style, no Card wrapper
-- ✅ src/features/auth/components/mfa-setup.tsx — Linear-style, no Card wrapper
-- ✅ src/features/auth/components/two-factor-auth-page.tsx — Semantic error styling
-- ✅ src/features/auth/components/sso-buttons.tsx — Google only, simplified
-- ✅ src/features/auth/schema/auth.schema.ts — Added resetPasswordSchema with newPassword field
-- ✅ src/app/auth/layout.tsx — VTT Labs branding, feature pills, English
-- ✅ src/app/layout.tsx — Light mode default
-- ✅ src/app/globals.css — Light mode comments fixed
+- ✅ src/lib/supabase/database.types.ts — Regenerated via `npx supabase gen types typescript --local`
+- ✅ src/features/auth/services/auth.service.ts — Fixed MFAStatus type (string | null)
+- ✅ src/features/auth/actions/auth.actions.ts — Fixed imports and Zod error access
+- ✅ src/features/auth/schema/auth.schema.ts — Fixed z.literal errorMap syntax
+- ✅ src/features/landing/components/LandingPage.tsx — Removed non-existent import
+- ✅ src/components/nav-projects.tsx — Added optional title prop with Readonly
+- ✅ src/lib/context/GlobalContext.tsx — Added profile state with useMemo
+- ✅ tailwind.config.ts — Added features/ directory to content scan
+- ✅ All auth form components — Harmonized spacing (space-y-6, space-y-4, mt-2)
 
 Design Decisions Applied:
-- Removed Card wrappers from all auth forms (Linear-style direct containers)
-- space-y-8 for main sections, space-y-5 for form fields
-- Emerald colors (emerald-100, emerald-600, emerald-700) for success states
-- Loader2 spinner with animate-spin for loading states
-- for...of instead of forEach (eslint compliance)
-- Readonly props for TypeScript strictness
-- Zod schemas for all form validation
-- English text throughout (code language consistency)
+- UI Spacing Pattern: Container `space-y-6`, Form `space-y-4`, Button `mt-2`
+- Removed unused imports (HomePricing)
+- Type-safe MFA status handling (null-safe)
+- Features directory now properly scanned by TailwindCSS
 
 Validation Checklist:
+- ✅ TypeScript compiles with zero errors (`npx tsc --noEmit`)
+- ✅ Supabase types match database schema
+- ✅ All auth forms have consistent spacing
 - ✅ No unexplained bracket tokens remaining
 - ✅ Dates in ISO format YYYY-MM-DD
-- ✅ Principles are declarative and testable
-- ✅ Version line matches report
-- ✅ All auth components follow Linear-style
-- ✅ SSO simplified to Google only
 
 Follow-up TODOs:
 - None
@@ -58,7 +49,7 @@ Follow-up TODOs:
 
 # VTT Labs — Constitution
 
-> **Version** : 2.2.0 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-30
+> **Version** : 2.2.1 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-12-01
 
 Ce document définit les règles **non-négociables** du projet VTT Labs. Toute contribution DOIT respecter ces principes. Aucune exception sans amendement formel.
 
@@ -636,6 +627,16 @@ Tout nouveau module DOIT :
 ---
 
 ## Changelog
+
+### v2.2.1 (2025-12-01)
+- **PATCH** : TypeScript compilation fixes - zero errors
+- **FIXED** : Supabase database.types.ts regenerated via CLI
+- **FIXED** : MFAStatus type updated to accept `string | null` for currentLevel/nextLevel
+- **FIXED** : auth.actions.ts imports and Zod error access patterns
+- **FIXED** : nav-projects.tsx title prop with Readonly<> wrapper
+- **FIXED** : GlobalContext.tsx profile state with useMemo optimization
+- **FIXED** : tailwind.config.ts content array includes `src/features/**/*`
+- **HARMONIZED** : Auth form spacing pattern (space-y-6 container, space-y-4 form, mt-2 button)
 
 ### v2.2.0 (2025-11-30)
 - **MINOR** : Complete Auth UI refactoring to Linear-style design
