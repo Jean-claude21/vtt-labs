@@ -1,10 +1,10 @@
 <!--
 SYNC IMPACT REPORT
-Version: 2.0.0 → 2.0.1 (PATCH)
-Rationale: Validation des templates et clarification du rapport d'impact
+Version: 2.0.1 → 2.1.0 (MINOR)
+Rationale: Amendement règle composants UI + restructuration module auth
 
 Modified Principles:
-- None
+- II.5 Composants UI Shadcn — Nouvelle règle autorisant les modifications Linear-style
 
 Added Sections:
 - None
@@ -13,11 +13,18 @@ Removed Sections:
 - None
 
 Templates Status:
-- ✅ plan-template.md — Compatible (Technical Context section captures module info)
-- ✅ spec-template.md — Compatible (User Story structure supports module features)
-- ✅ tasks-template.md — Compatible (Phase 2: Foundational includes shared infra)
-- ✅ checklist-template.md — Generic, no constitution-specific requirements
-- ✅ agent-file-template.md — Generic, auto-generated from plans
+- ✅ plan-template.md — Compatible
+- ✅ spec-template.md — Compatible
+- ✅ tasks-template.md — Compatible
+- ✅ checklist-template.md — Generic
+- ✅ agent-file-template.md — Generic
+
+Implementation Applied:
+- ✅ src/features/auth/schema/ — Schémas Zod créés
+- ✅ src/features/auth/services/ — Service auth créé
+- ✅ src/features/auth/actions/ — Server Actions créées
+- ✅ src/components/ui/*.tsx — Linear-style appliqué (button, input, card, alert)
+- ✅ src/app/globals.css — Red Signature design tokens appliqués
 
 Validation Checklist:
 - ✅ No unexplained bracket tokens remaining
@@ -27,12 +34,12 @@ Validation Checklist:
 - ✅ All design tokens documented
 
 Follow-up TODOs:
-- TODO(COMMANDS): `.specify/templates/commands/` directory not found — create if slash commands needed
+- None
 -->
 
 # VTT Labs — Constitution
 
-> **Version** : 2.0.1 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-29
+> **Version** : 2.1.0 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-29
 
 Ce document définit les règles **non-négociables** du projet VTT Labs. Toute contribution DOIT respecter ces principes. Aucune exception sans amendement formel.
 
@@ -97,7 +104,7 @@ vtt-labs/
 │   │   └── shared/             # Code partagé entre modules
 │   │
 │   ├── components/
-│   │   ├── ui/                 # Composants Shadcn (NE PAS MODIFIER)
+│   │   ├── ui/                 # Composants Shadcn (Linear-style modifiés)
 │   │   └── shared/             # Composants cross-app
 │   │
 │   └── lib/
@@ -123,6 +130,11 @@ vtt-labs/
    - `schema/` — Schémas Zod pour validation
 
 4. **Database in Migrations Only** — Les définitions de tables, RPCs, Views et Policies existent UNIQUEMENT dans `supabase/migrations/`.
+
+5. **Composants UI Shadcn** — Les composants dans `components/ui/` PEUVENT être modifiés pour conformité Linear-style :
+   - Chaque modification DOIT être documentée en commentaire en tête de fichier
+   - Les mises à jour Shadcn doivent être fusionnées manuellement
+   - Les modifications autorisées : padding (densité), radius, transitions, couleurs via CSS variables
 
 ---
 
@@ -606,10 +618,15 @@ Tout nouveau module DOIT :
 
 ## Changelog
 
+### v2.1.0 (2025-11-29)
+- **MINOR** : Amendement règle II.5 — Composants UI Shadcn modifiables pour Linear-style
+- **IMPLEMENTED** : Module auth restructuré (actions/services/schema)
+- **IMPLEMENTED** : CSS Variables Red Signature dans globals.css
+- **IMPLEMENTED** : Composants UI modifiés (button, input, card, alert) pour densité haute
+
 ### v2.0.1 (2025-11-29)
 - **PATCH** : Validation des templates et mise à jour du rapport d'impact
 - **VALIDATED** : Tous les templates sont compatibles avec la constitution v2.0.0
-- **NOTE** : Dossier `.specify/templates/commands/` non trouvé — à créer si nécessaire
 
 ### v2.0.0 (2025-11-29)
 - **BREAKING** : Refonte complète pour architecture multi-app extensible

@@ -29,6 +29,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { createSPASassClient } from "@/lib/supabase/client"
 
 export function NavUser({
   user,
@@ -40,6 +41,15 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+
+  const handleLogout = async () => {
+    try {
+      const client = await createSPASassClient()
+      await client.logout()
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -102,7 +112,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50">
               <LogOut />
               Log out
             </DropdownMenuItem>
