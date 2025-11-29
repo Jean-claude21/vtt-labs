@@ -2,3 +2,16 @@ Specify Article
 
 https://medium.com/@hashaamkhan975/spec-driven-development-with-spec-kit-34c443e3eaf6
 
+
+
+Thank you for the clarification. I have now read the speckit.readme.md document.
+
+Based on the documentation, speckit follows a five-phase workflow:
+
+/speckit.constitution: Establishes project rules.
+/speckit.specify: Defines the project's requirements.
+/speckit.plan: Creates the technical plan and architecture.
+/speckit.tasks: Breaks the plan into a task list.
+/speckit.implement: Executes the tasks to write code.
+You mentioned that you have already completed the constitution and specify phases and that the next step is to plan.
+

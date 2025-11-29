@@ -104,24 +104,20 @@ function CreateTaskDialog({ onTaskCreated }: CreateTaskDialogProps) {
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 )}
-                <form onSubmit={handleAddTask} className="space-y-4">
-                    <div className="space-y-2">
-                        <Input
-                            type="text"
-                            value={newTaskTitle}
-                            onChange={(e) => setNewTaskTitle(e.target.value)}
-                            placeholder="Task title"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Textarea
-                            value={newTaskDescription}
-                            onChange={(e) => setNewTaskDescription(e.target.value)}
-                            placeholder="Task description (optional)"
-                            rows={3}
-                        />
-                    </div>
+                <form onSubmit={handleAddTask} className="space-y-6">
+                    <Input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="Task title"
+                        required
+                    />
+                    <Textarea
+                        value={newTaskDescription}
+                        onChange={(e) => setNewTaskDescription(e.target.value)}
+                        placeholder="Task description (optional)"
+                        rows={3}
+                    />
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                             <Checkbox
