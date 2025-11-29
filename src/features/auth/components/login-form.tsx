@@ -4,7 +4,7 @@ import { createSPASassClient } from '@/lib/supabase/client';
 import {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import SSOButtons from '@/features/auth/components/SSOButtons';
+import SSOButtons from '@/features/auth/components/sso-buttons';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

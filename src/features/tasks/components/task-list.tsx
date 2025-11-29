@@ -35,7 +35,7 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 import { CheckCircle, Loader2, Plus, Trash2, AlertCircle } from 'lucide-react';
-import Confetti from '@/components/Confetti';
+import Confetti from '@/components/confetti';
 
 import { Database } from '@/lib/types';
 

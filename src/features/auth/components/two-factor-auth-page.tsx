@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSPASassClient } from '@/lib/supabase/client';
-import { MFAVerification } from '@/features/auth/components/MFAVerification';
+import { MFAVerification } from '@/features/auth/components/mfa-verification';
 import { Loader2 } from 'lucide-react';
 
 export default function TwoFactorAuthPage() {

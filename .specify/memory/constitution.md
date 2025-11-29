@@ -1,10 +1,10 @@
 <!--
 SYNC IMPACT REPORT
-Version: 2.0.1 → 2.1.0 (MINOR)
-Rationale: Amendement règle composants UI + restructuration module auth
+Version: 2.1.0 → 2.1.1 (PATCH)
+Rationale: Correction incohérence Mode Light/Dark dans Section X
 
 Modified Principles:
-- II.5 Composants UI Shadcn — Nouvelle règle autorisant les modifications Linear-style
+- X. Design System Tokens — Correction titre "Mode Dark" → "Mode Light" pour cohérence avec III
 
 Added Sections:
 - None
@@ -25,6 +25,7 @@ Implementation Applied:
 - ✅ src/features/auth/actions/ — Server Actions créées
 - ✅ src/components/ui/*.tsx — Linear-style appliqué (button, input, card, alert)
 - ✅ src/app/globals.css — Red Signature design tokens appliqués
+- ✅ supabase/migrations/20251129000000_profiles_access.sql — Migration créée
 
 Validation Checklist:
 - ✅ No unexplained bracket tokens remaining
@@ -32,6 +33,7 @@ Validation Checklist:
 - ✅ Principles are declarative and testable
 - ✅ Version line matches report
 - ✅ All design tokens documented
+- ✅ Section III.Mode et Section X.Title cohérents
 
 Follow-up TODOs:
 - None
@@ -39,7 +41,7 @@ Follow-up TODOs:
 
 # VTT Labs — Constitution
 
-> **Version** : 2.1.0 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-29
+> **Version** : 2.1.1 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-29
 
 Ce document définit les règles **non-négociables** du projet VTT Labs. Toute contribution DOIT respecter ces principes. Aucune exception sans amendement formel.
 
@@ -148,7 +150,7 @@ VTT Labs adopte un design system inspiré de **Linear** avec le **rouge comme co
 
 | Principe | Règle |
 |----------|-------|
-| **Mode** | Dark par défaut, Light mode disponible |
+| **Mode** | Light par défaut, Dark mode disponible |
 | **Densité** | Haute — Maximiser l'information visible |
 | **Typographie** | Inter (UI), Geist Mono (code) |
 | **Radius** | Petit — `rounded-md` (6px) par défaut |
@@ -454,7 +456,7 @@ Tout nouveau module DOIT :
 
 ## X. Design System Tokens
 
-### Couleurs — Mode Dark (Défaut)
+### Couleurs — Mode Light (Défaut)
 
 ```css
 /* ═══════════════════════════════════════════════════════════
@@ -617,6 +619,10 @@ Tout nouveau module DOIT :
 ---
 
 ## Changelog
+
+### v2.1.1 (2025-11-29)
+- **PATCH** : Correction incohérence Section X — Titre changé de "Mode Dark (Défaut)" à "Mode Light (Défaut)"
+- **VALIDATED** : Cohérence entre Section III (Light par défaut) et Section X (titre)
 
 ### v2.1.0 (2025-11-29)
 - **MINOR** : Amendement règle II.5 — Composants UI Shadcn modifiables pour Linear-style

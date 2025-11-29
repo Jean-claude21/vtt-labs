@@ -1,6 +1,6 @@
 'use client';
 
-import VerifyEmailForm from '@/features/auth/components/VerifyEmailForm';
+import VerifyEmailForm from '@/features/auth/components/verify-email-form';
 
 export default function VerifyEmailPage() {
     return <VerifyEmailForm />;

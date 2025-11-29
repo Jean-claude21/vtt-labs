@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Analytics } from '@vercel/analytics/next';
-import CookieConsent from "@/components/Cookies";
+import CookieConsent from "@/components/cookies";
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { Inter } from "next/font/google";
 

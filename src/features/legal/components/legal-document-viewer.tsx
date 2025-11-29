@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import LegalDocument from '@/features/legal/components/LegalDocument';
+import LegalDocument from '@/features/legal/components/legal-document';
 import { notFound } from 'next/navigation';
 
 const legalDocuments = {

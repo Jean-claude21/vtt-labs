@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import LegalDocumentViewer from '@/features/legal/components/LegalDocumentViewer';
+import LegalDocumentViewer from '@/features/legal/components/legal-document-viewer';
 
 interface LegalPageProps {
     document: string;
