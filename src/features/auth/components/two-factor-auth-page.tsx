@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSPASassClient } from '@/lib/supabase/client';
 import { MFAVerification } from '@/features/auth/components/mfa-verification';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 
 export default function TwoFactorAuthPage() {
@@ -48,23 +49,25 @@ export default function TwoFactorAuthPage() {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="flex justify-center items-center">
-                <div className="text-red-600">{error}</div>
+            <div className="space-y-8">
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
             </div>
         );
     }
 
     return (
-            <div className="w-full max-w-md">
-                <MFAVerification onVerified={handleVerified} />
-            </div>
+        <div className="w-full max-w-md">
+            <MFAVerification onVerified={handleVerified} />
+        </div>
     );
 }

@@ -1,13 +1,13 @@
 <!--
 SYNC IMPACT REPORT
-Version: 2.1.0 → 2.1.1 (PATCH)
-Rationale: Correction incohérence Mode Light/Dark dans Section X
+Version: 2.1.1 → 2.2.0 (MINOR)
+Rationale: Auth UI component refactoring - Linear-style design, Zod validation, English text
 
 Modified Principles:
-- X. Design System Tokens — Correction titre "Mode Dark" → "Mode Light" pour cohérence avec III
+- None
 
 Added Sections:
-- None
+- None (existing principles applied)
 
 Removed Sections:
 - None
@@ -20,20 +20,37 @@ Templates Status:
 - ✅ agent-file-template.md — Generic
 
 Implementation Applied:
-- ✅ src/features/auth/schema/ — Schémas Zod créés
-- ✅ src/features/auth/services/ — Service auth créé
-- ✅ src/features/auth/actions/ — Server Actions créées
-- ✅ src/components/ui/*.tsx — Linear-style appliqué (button, input, card, alert)
-- ✅ src/app/globals.css — Red Signature design tokens appliqués
-- ✅ supabase/migrations/20251129000000_profiles_access.sql — Migration créée
+- ✅ src/features/auth/components/login-form.tsx — Linear-style, Zod validation, English
+- ✅ src/features/auth/components/register-form.tsx — Linear-style, Zod validation, English
+- ✅ src/features/auth/components/forgot-password-form.tsx — Linear-style, Zod validation, English
+- ✅ src/features/auth/components/reset-password-form.tsx — Linear-style, Zod validation, English
+- ✅ src/features/auth/components/verify-email-form.tsx — Linear-style, emerald success colors
+- ✅ src/features/auth/components/mfa-verification.tsx — Linear-style, no Card wrapper
+- ✅ src/features/auth/components/mfa-setup.tsx — Linear-style, no Card wrapper
+- ✅ src/features/auth/components/two-factor-auth-page.tsx — Semantic error styling
+- ✅ src/features/auth/components/sso-buttons.tsx — Google only, simplified
+- ✅ src/features/auth/schema/auth.schema.ts — Added resetPasswordSchema with newPassword field
+- ✅ src/app/auth/layout.tsx — VTT Labs branding, feature pills, English
+- ✅ src/app/layout.tsx — Light mode default
+- ✅ src/app/globals.css — Light mode comments fixed
+
+Design Decisions Applied:
+- Removed Card wrappers from all auth forms (Linear-style direct containers)
+- space-y-8 for main sections, space-y-5 for form fields
+- Emerald colors (emerald-100, emerald-600, emerald-700) for success states
+- Loader2 spinner with animate-spin for loading states
+- for...of instead of forEach (eslint compliance)
+- Readonly props for TypeScript strictness
+- Zod schemas for all form validation
+- English text throughout (code language consistency)
 
 Validation Checklist:
 - ✅ No unexplained bracket tokens remaining
 - ✅ Dates in ISO format YYYY-MM-DD
 - ✅ Principles are declarative and testable
 - ✅ Version line matches report
-- ✅ All design tokens documented
-- ✅ Section III.Mode et Section X.Title cohérents
+- ✅ All auth components follow Linear-style
+- ✅ SSO simplified to Google only
 
 Follow-up TODOs:
 - None
@@ -41,7 +58,7 @@ Follow-up TODOs:
 
 # VTT Labs — Constitution
 
-> **Version** : 2.1.1 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-29
+> **Version** : 2.2.0 | **Ratifiée** : 2025-11-25 | **Dernière modification** : 2025-11-30
 
 Ce document définit les règles **non-négociables** du projet VTT Labs. Toute contribution DOIT respecter ces principes. Aucune exception sans amendement formel.
 
@@ -619,6 +636,16 @@ Tout nouveau module DOIT :
 ---
 
 ## Changelog
+
+### v2.2.0 (2025-11-30)
+- **MINOR** : Complete Auth UI refactoring to Linear-style design
+- **IMPLEMENTED** : All auth forms use Zod validation schemas
+- **IMPLEMENTED** : Removed Card wrappers, space-y-8/space-y-5 layout pattern
+- **IMPLEMENTED** : Emerald colors for success states (not green-500)
+- **IMPLEMENTED** : SSO simplified to Google only
+- **IMPLEMENTED** : English text throughout auth components
+- **IMPLEMENTED** : Auth layout with VTT Labs branding and feature pills
+- **FIXED** : ESLint compliance (for...of, readonly props)
 
 ### v2.1.1 (2025-11-29)
 - **PATCH** : Correction incohérence Section X — Titre changé de "Mode Dark (Défaut)" à "Mode Light (Défaut)"

@@ -17,14 +17,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let theme = process.env.NEXT_PUBLIC_THEME
-  if(!theme) {
-    theme = "dark"
-  }
   const gaID = process.env.NEXT_PUBLIC_GOOGLE_TAG;
   return (
     <html lang="en">
-    <body className={`${theme} ${inter.className} text-sm antialiased`}>
+    <body className={`${inter.className} text-sm antialiased bg-background text-foreground`}>
       {children}
       <Analytics />
       <CookieConsent />

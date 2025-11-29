@@ -70,7 +70,7 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 // ============================================================================
 
 export const resetPasswordSchema = z.object({
-  password: z
+  newPassword: z
     .string()
     .min(1, 'Password is required')
     .min(8, 'Password must be at least 8 characters')
@@ -79,7 +79,7 @@ export const resetPasswordSchema = z.object({
       'Password must contain at least one uppercase letter, one lowercase letter, and one number'
     ),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-}).refine((data) => data.password === data.confirmPassword, {
+}).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
 });

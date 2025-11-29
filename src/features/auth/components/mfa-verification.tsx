@@ -1,15 +1,16 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { createSPASassClient } from '@/lib/supabase/client';
-import { CheckCircle, Smartphone } from 'lucide-react';
+import { CheckCircle, Smartphone, Shield, Loader2 } from 'lucide-react';
 import { Factor } from '@supabase/auth-js';
 
 interface MFAVerificationProps {
-    onVerified: () => void;
+    readonly onVerified: () => void;
 }
 
 export function MFAVerification({ onVerified }: MFAVerificationProps) {
@@ -33,7 +34,6 @@ export function MFAVerification({ onVerified }: MFAVerificationProps) {
 
             const totpFactors = data.totp || [];
             setFactors(totpFactors);
-            console.log('totpFactors:', totpFactors);
 
             // If there's only one factor, select it automatically
             if (totpFactors.length === 1) {
@@ -87,100 +87,116 @@ export function MFAVerification({ onVerified }: MFAVerificationProps) {
 
     if (loadingFactors) {
         return (
-            <Card className="w-full">
-                <CardContent className="flex justify-center items-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                </CardContent>
-            </Card>
+            <div className="space-y-8">
+                <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+            </div>
         );
     }
 
     if (factors.length === 0) {
         return (
-            <Card className="w-full">
-                <CardContent className="py-8">
-                    <Alert variant="destructive">
-                        <AlertDescription>
-                            No authentication devices found. Please contact support.
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
+            <div className="space-y-8">
+                <Alert variant="destructive">
+                    <AlertDescription>
+                        No authentication devices found. Please contact support.
+                    </AlertDescription>
+                </Alert>
+            </div>
         );
     }
 
     return (
-        <Card className="w-full">
-            <CardHeader>
-                <CardTitle>Two-Factor Authentication Required</CardTitle>
-                <CardDescription>
-                    Please enter the verification code from your authenticator app
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {error && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                        <Shield className="h-8 w-8 text-foreground" />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <h1 className="text-xl font-semibold tracking-tight">Two-factor authentication</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Enter the verification code from your authenticator app
+                    </p>
+                </div>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* Form */}
+            <div className="space-y-5">
+                {factors.length > 1 && (
+                    <div className="space-y-2">
+                        <Label>Select authentication device</Label>
+                        <div className="grid gap-3">
+                            {factors.map((factor) => (
+                                <button
+                                    key={factor.id}
+                                    onClick={() => setSelectedFactorId(factor.id)}
+                                    className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${
+                                        selectedFactorId === factor.id
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-border hover:border-muted-foreground/50 hover:bg-muted/50'
+                                    }`}
+                                >
+                                    <Smartphone className="h-5 w-5 text-muted-foreground" />
+                                    <div className="flex-1 text-left">
+                                        <p className="font-medium text-sm">
+                                            {factor.friendly_name || 'Authenticator device'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Added on {new Date(factor.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    {selectedFactorId === factor.id && (
+                                        <CheckCircle className="h-5 w-5 text-primary" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
-                <div className="space-y-4">
-                    {factors.length > 1 && (
-                        <div className="space-y-2">
-                            <Label>Select Authentication Device</Label>
-                            <div className="grid gap-3">
-                                {factors.map((factor) => (
-                                    <button
-                                        key={factor.id}
-                                        onClick={() => setSelectedFactorId(factor.id)}
-                                        className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${
-                                            selectedFactorId === factor.id
-                                                ? 'border-primary bg-primary/10 text-primary'
-                                                : 'border-border hover:border-primary/50 hover:bg-muted'
-                                        }`}
-                                    >
-                                        <Smartphone className="h-5 w-5" />
-                                        <div className="flex-1 text-left">
-                                            <p className="font-medium">
-                                                {factor.friendly_name || 'Authenticator Device'}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                Added on {new Date(factor.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        {selectedFactorId === factor.id && (
-                                            <CheckCircle className="h-5 w-5 text-primary" />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <Label htmlFor="verify-code">Verification Code</Label>
-                        <Input
-                            id="verify-code"
-                            type="text"
-                            value={verifyCode}
-                            onChange={(e) => setVerifyCode(e.target.value.trim())}
-                            placeholder="Enter 6-digit code"
-                            maxLength={6}
-                        />
-                        <p className="text-sm text-muted-foreground">
-                            Enter the 6-digit code from your authenticator app
-                        </p>
-                    </div>
-
-                    <Button
-                        className="w-full"
-                        onClick={handleVerification}
-                        disabled={loading || verifyCode.length !== 6 || !selectedFactorId}
-                    >
-                        {loading ? 'Verifying...' : 'Verify'}
-                    </Button>
+                <div className="space-y-2">
+                    <Label htmlFor="verify-code">Verification code</Label>
+                    <Input
+                        id="verify-code"
+                        type="text"
+                        value={verifyCode}
+                        onChange={(e) => setVerifyCode(e.target.value.trim())}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Enter the 6-digit code from your authenticator app
+                    </p>
                 </div>
-            </CardContent>
-        </Card>
+
+                <Button
+                    className="w-full"
+                    onClick={handleVerification}
+                    disabled={loading || verifyCode.length !== 6 || !selectedFactorId}
+                >
+                    {loading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Verifying...
+                        </>
+                    ) : (
+                        'Verify'
+                    )}
+                </Button>
+            </div>
+        </div>
     );
 }

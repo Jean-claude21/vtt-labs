@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import { createSPASassClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, Key } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle, Loader2 } from 'lucide-react';
+import { resetPasswordSchema } from '@/features/auth/schema';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ResetPasswordForm() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<{ newPassword?: string; confirmPassword?: string }>({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const router = useRouter();
@@ -39,14 +40,17 @@ export default function ResetPasswordForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setFieldErrors({});
 
-        if (newPassword !== confirmPassword) {
-            setError("Passwords don't match");
-            return;
-        }
-
-        if (newPassword.length < 6) {
-            setError('Password must be at least 6 characters long');
+        // Zod validation
+        const validation = resetPasswordSchema.safeParse({ newPassword, confirmPassword });
+        if (!validation.success) {
+            const errors: { newPassword?: string; confirmPassword?: string } = {};
+            for (const issue of validation.error.issues) {
+                if (issue.path[0] === 'newPassword') errors.newPassword = issue.message;
+                if (issue.path[0] === 'confirmPassword') errors.confirmPassword = issue.message;
+            }
+            setFieldErrors(errors);
             return;
         }
 
@@ -77,72 +81,88 @@ export default function ResetPasswordForm() {
 
     if (success) {
         return (
-            <Card className="w-full shadow sm:rounded-lg">
-                <CardContent className="pt-6 text-center">
-                    <div className="flex justify-center mb-4">
-                        <CheckCircle className="h-16 w-16 text-green-500" />
+            <div className="space-y-8">
+                <div className="text-center space-y-4">
+                    <div className="flex justify-center">
+                        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8 text-emerald-600" />
+                        </div>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                        Password reset successful
-                    </h2>
-
-                    <p className="text-muted-foreground mb-8">
-                        Your password has been successfully reset.
-                        You will be redirected to the app in a moment.
-                    </p>
-                </CardContent>
-            </Card>
+                    <div className="space-y-2">
+                        <h1 className="text-xl font-semibold tracking-tight">Password reset successful</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Your password has been successfully reset.
+                            You will be redirected to the app in a moment.
+                        </p>
+                    </div>
+                </div>
+            </div>
         );
     }
 
     return (
-        <Card className="w-full shadow sm:rounded-lg">
-            <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                    <Key className="h-12 w-12 text-primary" />
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="space-y-2 text-center">
+                <h1 className="text-xl font-semibold tracking-tight">Set new password</h1>
+                <p className="text-sm text-muted-foreground">
+                    Enter your new password below
+                </p>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="newPassword">New password</Label>
+                    <Input
+                        id="newPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                    />
+                    {fieldErrors.newPassword && (
+                        <p className="text-xs text-destructive">{fieldErrors.newPassword}</p>
+                    )}
                 </div>
-                <CardTitle className="text-2xl font-bold">Set new password</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {error && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <Input
-                            id="newPassword"
-                            name="newPassword"
-                            type="password"
-                            autoComplete="new-password"
-                            required
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                        />
-                    </div>
+                <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm new password</Label>
+                    <Input
+                        id="confirmPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                    />
+                    {fieldErrors.confirmPassword && (
+                        <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+                    )}
+                </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type="password"
-                            autoComplete="new-password"
-                            required
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? 'Resetting password...' : 'Reset password'}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+                <Button type="submit" className="w-full mt-2" disabled={loading}>
+                    {loading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Resetting...
+                        </>
+                    ) : (
+                        'Reset password'
+                    )}
+                </Button>
+            </form>
+        </div>
     );
 }

@@ -1,17 +1,16 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { createSPASassClient } from '@/lib/supabase/client';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Key, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import {Factor} from "@supabase/auth-js";
-import { MFAEnrollTOTPParams } from '@supabase/auth-js';
-
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Shield, CheckCircle, XCircle, Loader2, Smartphone, Plus } from 'lucide-react';
+import { Factor, MFAEnrollTOTPParams } from '@supabase/auth-js';
 
 interface MFASetupProps {
-    onStatusChange?: () => void;
+    readonly onStatusChange?: () => void;
 }
 
 export function MFASetup({ onStatusChange }: MFASetupProps) {
@@ -134,157 +133,205 @@ export function MFASetup({ onStatusChange }: MFASetupProps) {
 
     if (loading) {
         return (
-            <Card>
-                <CardContent className="flex justify-center items-center p-6">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                </CardContent>
-            </Card>
+            <div className="space-y-8">
+                <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+            </div>
         );
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Key className="h-5 w-5" />
-                    Two-Factor Authentication (2FA)
-                </CardTitle>
-                <CardDescription>
-                    Add an additional layer of security to your account
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {error && (
-                    <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-
-                {factors.length > 0 && step === 'list' && (
-                    <div className="space-y-4">
-                        {factors.map((factor) => (
-                            <div key={factor.id} className="flex items-center justify-between p-4 border rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    {factor.status === 'verified' ? (
-                                        <CheckCircle className="h-5 w-5 text-green-500" />
-                                    ) : (
-                                        <XCircle className="h-5 w-5 text-red-500" />
-                                    )}
-                                    <div>
-                                        <p className="font-medium">
-                                            {factor.friendly_name || 'Authenticator App'}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Added on {new Date(factor.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => unenrollFactor(factor.id)}
-                                    disabled={actionInProgress}
-                                >
-                                    Remove
-                                </Button>
-                            </div>
-                        ))}
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                        <Shield className="h-5 w-5 text-foreground" />
                     </div>
-                )}
+                    <div>
+                        <h2 className="text-lg font-semibold tracking-tight">Two-factor authentication</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Add an additional layer of security to your account
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-                {step === 'name' && (
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="friendly-name">Device Name</Label>
-                            <Input
-                                id="friendly-name"
-                                type="text"
-                                value={friendlyName}
-                                onChange={(e) => setFriendlyName(e.target.value)}
-                                placeholder="e.g., Work Phone, Personal iPhone"
-                                autoFocus
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                Give this authentication method a name to help you identify it later
-                            </p>
-                        </div>
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
 
-                        <div className="flex justify-end space-x-3 pt-2">
+            {/* Existing Factors List */}
+            {factors.length > 0 && step === 'list' && (
+                <div className="space-y-3">
+                    {factors.map((factor) => (
+                        <div
+                            key={factor.id}
+                            className="flex items-center justify-between p-4 border rounded-lg bg-muted/30"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border">
+                                    <Smartphone className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-sm">
+                                            {factor.friendly_name || 'Authenticator app'}
+                                        </p>
+                                        {factor.status === 'verified' ? (
+                                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                        ) : (
+                                            <XCircle className="h-4 w-4 text-destructive" />
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Added on {new Date(factor.created_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
                             <Button
-                                variant="outline"
-                                onClick={resetEnrollment}
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => unenrollFactor(factor.id)}
                                 disabled={actionInProgress}
                             >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={startEnrollment}
-                                disabled={actionInProgress || !friendlyName.trim()}
-                            >
-                                {actionInProgress ? 'Processing...' : 'Continue'}
+                                {actionInProgress ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    'Remove'
+                                )}
                             </Button>
                         </div>
-                    </div>
-                )}
+                    ))}
+                </div>
+            )}
 
-                {step === 'enroll' && (
-                    <div className="space-y-6">
-                        <div className="flex justify-center">
-                            {qr && (
+            {/* Name Step */}
+            {step === 'name' && (
+                <div className="space-y-5">
+                    <div className="space-y-2">
+                        <Label htmlFor="friendly-name">Device name</Label>
+                        <Input
+                            id="friendly-name"
+                            type="text"
+                            value={friendlyName}
+                            onChange={(e) => setFriendlyName(e.target.value)}
+                            placeholder="e.g., Work Phone, Personal iPhone"
+                            autoFocus
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Give this authentication method a name to help you identify it later
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={resetEnrollment}
+                            disabled={actionInProgress}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={startEnrollment}
+                            disabled={actionInProgress || !friendlyName.trim()}
+                        >
+                            {actionInProgress ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                'Continue'
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Enroll Step */}
+            {step === 'enroll' && (
+                <div className="space-y-6">
+                    <div className="text-center space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Scan this QR code with your authenticator app
+                        </p>
+                        {qr && (
+                            <div className="flex justify-center">
                                 <img
                                     src={qr}
                                     alt="QR Code"
-                                    className="w-48 h-48 border rounded-lg p-2"
+                                    className="w-48 h-48 border rounded-lg p-2 bg-white"
                                 />
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="verify-code">Verification Code</Label>
-                            <Input
-                                id="verify-code"
-                                type="text"
-                                value={verifyCode}
-                                onChange={(e) => setVerifyCode(e.target.value.trim())}
-                                placeholder="Enter code from your authenticator app"
-                            />
-                        </div>
-
-                        <div className="flex justify-end space-x-3 pt-2">
-                            <Button
-                                variant="outline"
-                                onClick={resetEnrollment}
-                                disabled={actionInProgress}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={verifyFactor}
-                                disabled={actionInProgress || verifyCode.length === 0}
-                            >
-                                {actionInProgress ? 'Verifying...' : 'Verify'}
-                            </Button>
-                        </div>
+                            </div>
+                        )}
                     </div>
-                )}
 
-                {step === 'list' && (
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            {factors.length === 0
-                                ? 'Protect your account with two-factor authentication. When enabled, you\'ll need to enter a code from your authenticator app in addition to your password when signing in.'
-                                : 'You can add additional authentication methods or remove existing ones.'}
+                    <div className="space-y-2">
+                        <Label htmlFor="verify-code">Verification code</Label>
+                        <Input
+                            id="verify-code"
+                            type="text"
+                            value={verifyCode}
+                            onChange={(e) => setVerifyCode(e.target.value.trim())}
+                            placeholder="000000"
+                            maxLength={6}
+                            className="text-center text-lg tracking-widest"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Enter the code from your authenticator app to verify setup
                         </p>
+                    </div>
+
+                    <div className="flex justify-end gap-3">
                         <Button
-                            className="w-full"
-                            onClick={() => setStep('name')}
+                            variant="outline"
+                            onClick={resetEnrollment}
                             disabled={actionInProgress}
                         >
-                            {actionInProgress ? 'Processing...' : 'Add New Authentication Method'}
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={verifyFactor}
+                            disabled={actionInProgress || verifyCode.length === 0}
+                        >
+                            {actionInProgress ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Verifying...
+                                </>
+                            ) : (
+                                'Verify'
+                            )}
                         </Button>
                     </div>
-                )}
-            </CardContent>
-        </Card>
+                </div>
+            )}
+
+            {/* List Step - Add Button */}
+            {step === 'list' && (
+                <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        {factors.length === 0
+                            ? "Protect your account with two-factor authentication. When enabled, you'll need to enter a code from your authenticator app in addition to your password when signing in."
+                            : 'You can add additional authentication methods or remove existing ones.'}
+                    </p>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setStep('name')}
+                        disabled={actionInProgress}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add authentication method
+                    </Button>
+                </div>
+            )}
+        </div>
     );
 }

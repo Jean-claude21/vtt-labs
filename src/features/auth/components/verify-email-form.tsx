@@ -1,13 +1,13 @@
 'use client';
 
-import { CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { createSPASassClient } from '@/lib/supabase/client';
+import { CheckCircle, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from "react";
-import { createSPASassClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function VerifyEmailForm() {
     const [email, setEmail] = useState('');
@@ -31,7 +31,7 @@ export default function VerifyEmailForm() {
                 return;
             }
             setSuccess(true);
-        } catch (err: Error | unknown) {
+        } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
@@ -40,69 +40,86 @@ export default function VerifyEmailForm() {
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     return (
-        <Card className="w-full shadow sm:rounded-lg">
-            <CardContent className="pt-6 text-center">
-                <div className="flex justify-center mb-4">
-                    <CheckCircle className="h-16 w-16 text-green-500" />
+        <div className="space-y-6">
+            {/* Header with Icon */}
+            <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Mail className="h-8 w-8 text-emerald-600" />
+                    </div>
                 </div>
 
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                    Check your email
-                </h2>
+                <div className="space-y-2">
+                    <h1 className="text-xl font-semibold tracking-tight">Check your email</h1>
+                    <p className="text-sm text-muted-foreground">
+                        We&apos;ve sent you an email with a verification link.
+                        Please check your inbox and click the link to verify your account.
+                    </p>
+                </div>
+            </div>
 
-                <p className="text-muted-foreground mb-8">
-                    We&#39;ve sent you an email with a verification link.
-                    Please check your inbox and click the link to verify your account.
+            {/* Resend Section */}
+            <div className="space-y-4">
+                <p className="text-sm text-center text-muted-foreground">
+                    Didn&apos;t receive the email? Check your spam folder or enter your email to resend:
                 </p>
 
-                <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        Didn&#39;t receive the email? Check your spam folder or enter your email to resend:
-                    </p>
+                {/* Error Alert */}
+                {error && (
+                    <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
 
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
+                {/* Success Alert */}
+                {success && (
+                    <Alert className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>Verification email has been resent successfully.</AlertDescription>
+                    </Alert>
+                )}
 
-                    {success && (
-                        <Alert className="bg-green-50 text-green-600 border-green-200">
-                            <AlertDescription>Verification email has been resent successfully.</AlertDescription>
-                        </Alert>
-                    )}
-
-                    <div className="mt-4">
-                        <Input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Enter your email address"
-                        />
-                    </div>
-
-                    <Button
-                        variant="link"
-                        className="text-primary hover:text-primary/80"
-                        onClick={resendVerificationEmail}
-                        disabled={loading}
-                    >
-                        {loading ? 'Sending...' : 'Click here to resend'}
-                    </Button>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email address</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                    />
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-border">
-                    <Link
-                        href="/auth/login"
-                        className="text-sm font-medium text-primary hover:text-primary/80"
-                    >
-                        Return to login
-                    </Link>
-                </div>
-            </CardContent>
-        </Card>
+                <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={resendVerificationEmail}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                        </>
+                    ) : (
+                        'Resend verification email'
+                    )}
+                </Button>
+            </div>
+
+            {/* Back to login */}
+            <div className="text-center">
+                <Link
+                    href="/auth/login"
+                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to login
+                </Link>
+            </div>
+        </div>
     );
 }
