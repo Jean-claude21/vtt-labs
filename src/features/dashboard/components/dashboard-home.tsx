@@ -29,6 +29,10 @@ const AVAILABLE_MODULES = [
 export default function DashboardHome() {
     const { loading, user, profile, moduleAccess, isAdmin } = useGlobal();
 
+    // Debug log
+    console.log('Dashboard - moduleAccess:', moduleAccess);
+    console.log('Dashboard - isAdmin:', isAdmin);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">

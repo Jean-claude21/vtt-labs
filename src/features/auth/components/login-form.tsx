@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function LoginForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('messanjeanclaude@gmail.com');
+    const [password, setPassword] = useState('@kya2022');
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
     const [loading, setLoading] = useState(false);

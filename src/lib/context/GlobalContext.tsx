@@ -68,10 +68,13 @@ export function GlobalProvider({ children }: Readonly<{ children: React.ReactNod
                 }
 
                 // Fetch module access
-                const { data: modulesData } = await client
+                const { data: modulesData, error: modulesError } = await client
                     .from('user_module_access')
                     .select('module_slug, enabled')
                     .eq('user_id', authUser.id);
+
+                console.log('GlobalContext - modulesData:', modulesData);
+                console.log('GlobalContext - modulesError:', modulesError);
 
                 if (modulesData) {
                     setModuleAccess(modulesData as ModuleAccess[]);

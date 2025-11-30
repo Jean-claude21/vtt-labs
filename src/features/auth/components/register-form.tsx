@@ -14,13 +14,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function RegisterForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [email, setEmail] = useState('messanjeanclaude@gmail.com');
+    const [password, setPassword] = useState('@kya2022');
+    const [confirmPassword, setConfirmPassword] = useState('@kya2022');
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
     const [loading, setLoading] = useState(false);
-    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [acceptedTerms, setAcceptedTerms] = useState(true);
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -28,20 +28,17 @@ export default function RegisterForm() {
         setError('');
         setFieldErrors({});
 
-        // Validate terms acceptance
-        if (!acceptedTerms) {
-            setError('You must accept the Terms of Service and Privacy Policy');
-            return;
-        }
-
-        // Zod validation
-        const validation = registerSchema.safeParse({ email, password, confirmPassword });
+        // Zod validation (includes acceptedTerms)
+        const validation = registerSchema.safeParse({ email, password, confirmPassword, acceptedTerms });
         if (!validation.success) {
             const errors: { email?: string; password?: string; confirmPassword?: string } = {};
             for (const issue of validation.error.issues) {
                 if (issue.path[0] === 'email') errors.email = issue.message;
                 if (issue.path[0] === 'password') errors.password = issue.message;
                 if (issue.path[0] === 'confirmPassword') errors.confirmPassword = issue.message;
+                if (issue.path[0] === 'acceptedTerms') {
+                    setError(issue.message);
+                }
             }
             setFieldErrors(errors);
             return;
