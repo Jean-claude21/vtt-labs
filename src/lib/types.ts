@@ -7,3 +7,20 @@
  */
 
 export * from './supabase/database.types';
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * Generic action result type for Server Actions
+ */
+export type ActionResult<T> = {
+  data: T | null;
+  error: string | null;
+};
+
+/**
+ * Type alias for Supabase client
+ * Using 'any' to accept both typed (Database) and untyped clients
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DbClient = SupabaseClient<any, any, any>;

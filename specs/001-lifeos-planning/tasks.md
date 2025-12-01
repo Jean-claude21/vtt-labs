@@ -35,11 +35,11 @@
 
 **Purpose**: Project initialization, database schema, and folder structure
 
-- [ ] T001 Create database migration file in supabase/migrations/YYYYMMDD_lifeos_planning.sql with all 9 tables from data-model.md
+- [X] T001 Create database migration file in supabase/migrations/YYYYMMDD_lifeos_planning.sql with all 9 tables from data-model.md
 - [ ] T002 Apply migration and regenerate TypeScript types with `npx supabase db push && npx supabase gen types typescript`
-- [ ] T003 [P] Create module folder structure: src/features/lifeos/{components,actions,services,schema} with subfolders
-- [ ] T004 [P] Create routing folder structure: src/app/app/lifeos/{domains,routines,tasks,projects,analytics}
-- [ ] T005 [P] Create module layout in src/app/app/lifeos/layout.tsx with teal-500 accent color
+- [X] T003 [P] Create module folder structure: src/features/lifeos/{components,actions,services,schema} with subfolders
+- [X] T004 [P] Create routing folder structure: src/app/app/lifeos/{domains,routines,tasks,projects,analytics}
+- [X] T005 [P] Create module layout in src/app/app/lifeos/layout.tsx with teal-500 accent color
 - [ ] T006 Add OPENAI_API_KEY to .env.example and environment configuration
 
 ---
@@ -52,15 +52,15 @@
 
 ### Shared Types & Schemas
 
-- [ ] T007 [P] Create domains Zod schema in src/features/lifeos/schema/domains.schema.ts
-- [ ] T008 [P] Create routines Zod schema in src/features/lifeos/schema/routines.schema.ts
-- [ ] T009 [P] Create tasks Zod schema in src/features/lifeos/schema/tasks.schema.ts
-- [ ] T010 [P] Create projects Zod schema in src/features/lifeos/schema/projects.schema.ts
-- [ ] T011 [P] Create planning Zod schema in src/features/lifeos/schema/planning.schema.ts
+- [X] T007 [P] Create domains Zod schema in src/features/lifeos/schema/domains.schema.ts
+- [X] T008 [P] Create routines Zod schema in src/features/lifeos/schema/routines.schema.ts
+- [X] T009 [P] Create tasks Zod schema in src/features/lifeos/schema/tasks.schema.ts
+- [X] T010 [P] Create projects Zod schema in src/features/lifeos/schema/projects.schema.ts
+- [X] T011 [P] Create planning Zod schema in src/features/lifeos/schema/planning.schema.ts
 
 ### Navigation Integration
 
-- [ ] T012 Add LifeOS module to sidebar navigation in src/components/app-sidebar.tsx with teal-500 icon
+- [X] T012 Add LifeOS module to sidebar navigation in src/components/app-sidebar.tsx with teal-500 icon
 
 **Checkpoint**: Foundation ready — User story implementation can now begin
 
@@ -74,14 +74,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement domains service with CRUD operations in src/features/lifeos/services/domains.service.ts
-- [ ] T014 [US1] Implement seed default domains function in src/features/lifeos/services/domains.service.ts (8 predefined domains)
-- [ ] T015 [US1] Create getDomains, getDomain, createDomain, updateDomain, deleteDomain, reorderDomains Server Actions in src/features/lifeos/actions/domains.actions.ts
-- [ ] T016 [US1] Create seedDefaultDomains Server Action in src/features/lifeos/actions/domains.actions.ts
-- [ ] T017 [P] [US1] Create DomainCard component in src/features/lifeos/components/domains/domain-card.tsx
-- [ ] T018 [P] [US1] Create DomainForm component (create/edit) in src/features/lifeos/components/domains/domain-form.tsx
-- [ ] T019 [US1] Create DomainsList component with reordering in src/features/lifeos/components/domains/domains-list.tsx
-- [ ] T020 [US1] Create Domains page with empty state + auto-seed in src/app/app/lifeos/domains/page.tsx
+- [X] T013 [US1] Implement domains service with CRUD operations in src/features/lifeos/services/domains.service.ts
+- [X] T014 [US1] Implement seed default domains function in src/features/lifeos/services/domains.service.ts (8 predefined domains)
+- [X] T015 [US1] Create getDomains, getDomain, createDomain, updateDomain, deleteDomain, reorderDomains Server Actions in src/features/lifeos/actions/domains.actions.ts
+- [X] T016 [US1] Create seedDefaultDomains Server Action in src/features/lifeos/actions/domains.actions.ts
+- [X] T017 [P] [US1] Create DomainCard component in src/features/lifeos/components/domains/domain-card.tsx
+- [X] T018 [P] [US1] Create DomainForm component (create/edit) in src/features/lifeos/components/domains/domain-form.tsx
+- [X] T019 [US1] Create DomainsList component with reordering in src/features/lifeos/components/domains/domains-list.tsx
+- [X] T020 [US1] Create Domains page with empty state + auto-seed in src/app/app/lifeos/domains/page.tsx
 
 **Checkpoint**: User Story 1 is fully functional and independently testable
 
@@ -95,14 +95,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement routines service with CRUD for templates in src/features/lifeos/services/routines.service.ts
-- [ ] T022 [US2] Implement constraints parsing (duration, time slot, target value) in src/features/lifeos/services/routines.service.ts
-- [ ] T023 [US2] Implement RRULE recurrence logic (daily, specific days, weekly, monthly) in src/features/lifeos/services/routines.service.ts
-- [ ] T024 [US2] Create getRoutines, getRoutine, createRoutine, updateRoutine, deleteRoutine Server Actions in src/features/lifeos/actions/routines.actions.ts
-- [ ] T025 [P] [US2] Create RoutineCard component with streak badge in src/features/lifeos/components/routines/routine-card.tsx
-- [ ] T026 [P] [US2] Create RoutineForm component with constraints UI in src/features/lifeos/components/routines/routine-form.tsx
-- [ ] T027 [US2] Create RoutinesList component with filters by domain/category in src/features/lifeos/components/routines/routines-list.tsx
-- [ ] T028 [US2] Create Routines page in src/app/app/lifeos/routines/page.tsx
+- [X] T021 [US2] Implement routines service with CRUD for templates in src/features/lifeos/services/routines.service.ts
+- [X] T022 [US2] Implement constraints parsing (duration, time slot, target value) in src/features/lifeos/services/routines.service.ts
+- [X] T023 [US2] Implement RRULE recurrence logic (daily, specific days, weekly, monthly) in src/features/lifeos/services/routines.service.ts
+- [X] T024 [US2] Create getRoutines, getRoutine, createRoutine, updateRoutine, deleteRoutine Server Actions in src/features/lifeos/actions/routines.actions.ts
+- [X] T025 [P] [US2] Create RoutineCard component with streak badge in src/features/lifeos/components/routines/routine-card.tsx
+- [X] T026 [P] [US2] Create RoutineForm component with constraints UI in src/features/lifeos/components/routines/routine-form.tsx
+- [X] T027 [US2] Create RoutinesList component with filters by domain/category in src/features/lifeos/components/routines/routines-list.tsx
+- [X] T028 [US2] Create Routines page in src/app/app/lifeos/routines/page.tsx
 
 **Checkpoint**: User Story 2 is fully functional and independently testable
 
@@ -116,13 +116,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Implement tasks service with CRUD and status transitions in src/features/lifeos/services/tasks.service.ts
-- [ ] T030 [US3] Implement task filtering (by domain, project, status, priority) in src/features/lifeos/services/tasks.service.ts
-- [ ] T031 [US3] Create getTasks, getTask, createTask, updateTask, deleteTask, updateTaskStatus Server Actions in src/features/lifeos/actions/tasks.actions.ts
-- [ ] T032 [P] [US3] Create TaskCard component with priority badge in src/features/lifeos/components/tasks/task-card.tsx
-- [ ] T033 [P] [US3] Create TaskForm component with deadline options in src/features/lifeos/components/tasks/task-form.tsx
-- [ ] T034 [US3] Create TasksList component with filters and sorting in src/features/lifeos/components/tasks/tasks-list.tsx
-- [ ] T035 [US3] Create Tasks page in src/app/app/lifeos/tasks/page.tsx
+- [X] T029 [US3] Implement tasks service with CRUD and status transitions in src/features/lifeos/services/tasks.service.ts
+- [X] T030 [US3] Implement task filtering (by domain, project, status, priority) in src/features/lifeos/services/tasks.service.ts
+- [X] T031 [US3] Create getTasks, getTask, createTask, updateTask, deleteTask, updateTaskStatus Server Actions in src/features/lifeos/actions/tasks.actions.ts
+- [X] T032 [P] [US3] Create TaskCard component with priority badge in src/features/lifeos/components/tasks/task-card.tsx
+- [X] T033 [P] [US3] Create TaskForm component with deadline options in src/features/lifeos/components/tasks/task-form.tsx
+- [X] T034 [US3] Create TasksList component with filters and sorting in src/features/lifeos/components/tasks/tasks-list.tsx
+- [X] T035 [US3] Create Tasks page in src/app/app/lifeos/tasks/page.tsx
 
 **Checkpoint**: User Story 3 is fully functional and independently testable
 
@@ -156,13 +156,13 @@
 
 ### Implementation for User Story 5
 
-- [ ] T043 [US5] Implement routine instance generation service in src/features/lifeos/services/routine-instances.service.ts
-- [ ] T044 [US5] Implement OpenAI scheduling integration in src/features/lifeos/services/ai/scheduler.ai.ts
-- [ ] T045 [US5] Implement planning service (slot generation, conflict detection) in src/features/lifeos/services/planning.service.ts
-- [ ] T046 [US5] Create generatePlan, regeneratePlan Server Actions in src/features/lifeos/actions/planning.actions.ts
-- [ ] T047 [US5] Create getPlanForDate, getPlanSlots Server Actions in src/features/lifeos/actions/planning.actions.ts
-- [ ] T048 [P] [US5] Create GeneratePlanButton component in src/features/lifeos/components/planning/generate-plan-button.tsx
-- [ ] T049 [P] [US5] Create DayNavigator component in src/features/lifeos/components/planning/day-navigator.tsx
+- [X] T043 [US5] Implement routine instance generation service in src/features/lifeos/services/routine-instances.service.ts
+- [X] T044 [US5] Implement OpenAI scheduling integration in src/features/lifeos/services/ai/scheduler.ai.ts
+- [X] T045 [US5] Implement planning service (slot generation, conflict detection) in src/features/lifeos/services/planning.service.ts
+- [X] T046 [US5] Create generatePlan, regeneratePlan Server Actions in src/features/lifeos/actions/planning.actions.ts
+- [X] T047 [US5] Create getPlanForDate, getPlanSlots Server Actions in src/features/lifeos/actions/planning.actions.ts
+- [X] T048 [P] [US5] Create GeneratePlanButton component in src/features/lifeos/components/planning/generate-plan-button.tsx
+- [X] T049 [P] [US5] Create DayNavigator component in src/features/lifeos/components/planning/day-navigator.tsx
 
 **Checkpoint**: User Story 5 is fully functional and independently testable
 
@@ -176,11 +176,11 @@
 
 ### Implementation for User Story 6
 
-- [ ] T050 [US6] Create PlanSlot component with domain coloring in src/features/lifeos/components/planning/plan-slot.tsx
-- [ ] T051 [US6] Create TimelineView component with hours grid in src/features/lifeos/components/planning/timeline-view.tsx
-- [ ] T052 [US6] Create SlotDetailsModal component showing AI reasoning in src/features/lifeos/components/planning/slot-details-modal.tsx
-- [ ] T053 [US6] Create CurrentTimeIndicator component in src/features/lifeos/components/planning/current-time-indicator.tsx
-- [ ] T054 [US6] Create main Planning page (dashboard) in src/app/app/lifeos/page.tsx
+- [X] T050 [US6] Create PlanSlot component with domain coloring in src/features/lifeos/components/planning/plan-slot.tsx
+- [X] T051 [US6] Create TimelineView component with hours grid in src/features/lifeos/components/planning/timeline-view.tsx
+- [X] T052 [US6] Create SlotDetailsModal component showing AI reasoning in src/features/lifeos/components/planning/slot-details-modal.tsx
+- [X] T053 [US6] Create CurrentTimeIndicator component in src/features/lifeos/components/planning/current-time-indicator.tsx
+- [X] T054 [US6] Create main Planning page (dashboard) in src/app/app/lifeos/page.tsx
 
 **Checkpoint**: User Story 6 is fully functional and independently testable
 
@@ -194,13 +194,13 @@
 
 ### Implementation for User Story 7
 
-- [ ] T055 [US7] Implement streak service (update, reset, calculate) in src/features/lifeos/services/streaks.service.ts
-- [ ] T056 [US7] Implement completeRoutineInstance with score calculation in src/features/lifeos/services/routine-instances.service.ts
-- [ ] T057 [US7] Implement skipRoutineInstance with reason in src/features/lifeos/services/routine-instances.service.ts
-- [ ] T058 [US7] Create completeRoutineInstance, skipRoutineInstance Server Actions in src/features/lifeos/actions/routines.actions.ts
-- [ ] T059 [US7] Create RoutineInstanceTracker component in src/features/lifeos/components/routines/routine-instance-tracker.tsx
-- [ ] T060 [US7] Create CompletionModal component with value input and mood/energy in src/features/lifeos/components/routines/completion-modal.tsx
-- [ ] T061 [US7] Integrate tracker into timeline slots in src/features/lifeos/components/planning/plan-slot.tsx
+- [X] T055 [US7] Implement streak service (update, reset, calculate) in src/features/lifeos/services/streaks.service.ts
+- [X] T056 [US7] Implement completeRoutineInstance with score calculation in src/features/lifeos/services/routine-instances.service.ts
+- [X] T057 [US7] Implement skipRoutineInstance with reason in src/features/lifeos/services/routine-instances.service.ts
+- [X] T058 [US7] Create completeRoutineInstance, skipRoutineInstance Server Actions in src/features/lifeos/actions/routines.actions.ts
+- [X] T059 [US7] Create RoutineInstanceTracker component in src/features/lifeos/components/routines/routine-instance-tracker.tsx
+- [X] T060 [US7] Create CompletionModal component with value input and mood/energy in src/features/lifeos/components/routines/completion-modal.tsx
+- [X] T061 [US7] Integrate tracker into timeline slots in src/features/lifeos/components/planning/plan-slot.tsx
 
 **Checkpoint**: User Story 7 is fully functional and independently testable
 

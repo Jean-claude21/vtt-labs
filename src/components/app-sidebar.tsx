@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import {
+  CalendarDays,
   Home,
   Settings,
   Shield,
@@ -36,6 +37,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       name: "Dashboard",
       url: "/app",
       icon: Home,
+    },
+    {
+      name: "LifeOS",
+      url: "/app/lifeos",
+      icon: CalendarDays,
     },
     {
       name: "Settings",
