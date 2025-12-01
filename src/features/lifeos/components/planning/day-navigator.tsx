@@ -57,7 +57,7 @@ export function DayNavigator({ currentDate, onDateChange }: DayNavigatorProps) {
     return `${capitalizedDay} ${dayMonth}`;
   };
   
-  const getRelativeLabel = (date: Date) => {
+  const getRelativeLabel = () => {
     const diff = Math.round((current.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diff === 0) return "Aujourd'hui";
@@ -69,7 +69,7 @@ export function DayNavigator({ currentDate, onDateChange }: DayNavigatorProps) {
     return null;
   };
   
-  const relativeLabel = getRelativeLabel(currentDate);
+  const relativeLabel = getRelativeLabel();
 
   return (
     <div className="flex items-center gap-2">

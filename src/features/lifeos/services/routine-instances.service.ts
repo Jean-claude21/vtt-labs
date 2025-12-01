@@ -23,10 +23,16 @@ export type ServiceResult<T> = {
  * Check if a routine should occur on a given date based on recurrence config
  */
 function shouldOccurOnDate(
-  config: RecurrenceConfig,
+  config: RecurrenceConfig | null | undefined,
   date: Date,
   templateCreatedAt: Date
 ): boolean {
+  // If no config, default to daily
+  if (!config || !config.type) {
+    console.log('[shouldOccurOnDate] No config or type, defaulting to true');
+    return true;
+  }
+
   const dayOfWeek = date.getDay(); // 0 = Sunday
   const dayOfMonth = date.getDate();
   
@@ -102,6 +108,8 @@ export const routineInstanceService = {
     targetDate.setHours(0, 0, 0, 0);
     const dateStr = targetDate.toISOString().split('T')[0];
 
+    console.log('[RoutineInstances] Generating for date:', dateStr, 'user:', userId);
+
     // Get all active routine templates
     const { data: templates, error: templatesError } = await client
       .from('lifeos_routine_templates')
@@ -110,10 +118,14 @@ export const routineInstanceService = {
       .eq('is_active', true);
 
     if (templatesError) {
+      console.error('[RoutineInstances] Error fetching templates:', templatesError.message);
       return { data: null, error: templatesError.message };
     }
 
+    console.log('[RoutineInstances] Found templates:', templates?.length ?? 0);
+
     if (!templates || templates.length === 0) {
+      console.log('[RoutineInstances] No active templates found');
       return { data: [], error: null };
     }
 
@@ -121,8 +133,12 @@ export const routineInstanceService = {
     const templatesToGenerate = templates.filter((template) => {
       const config = template.recurrence_config as RecurrenceConfig;
       const createdAt = new Date(template.created_at);
-      return shouldOccurOnDate(config, targetDate, createdAt);
+      const shouldOccur = shouldOccurOnDate(config, targetDate, createdAt);
+      console.log(`[RoutineInstances] Template "${template.name}" config:`, config, 'shouldOccur:', shouldOccur);
+      return shouldOccur;
     });
+
+    console.log('[RoutineInstances] Templates to generate:', templatesToGenerate.length);
 
     if (templatesToGenerate.length === 0) {
       return { data: [], error: null };

@@ -69,6 +69,7 @@ export function PlanSlotItem({
   onSkipRoutine,
   onCompleteTask,
   onSkipTask,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onShowDetails,
 }: PlanSlotProps) {
   const [showAiReasoning, setShowAiReasoning] = useState(false);

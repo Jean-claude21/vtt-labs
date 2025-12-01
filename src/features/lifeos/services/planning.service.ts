@@ -11,7 +11,7 @@
 import type { DbClient } from '@/lib/types';
 import { routineInstanceService } from './routine-instances.service';
 import { taskService } from './tasks.service';
-import { scheduleDay, type SchedulingInput } from './ai/scheduler.ai';
+import { scheduleDay, type SchedulingInput, type TimeSlotConfig } from './ai/scheduler.ai';
 import type { 
   GeneratedPlan, 
   PlanSlot,
@@ -25,6 +25,14 @@ export type ServiceResult<T> = {
   data: T | null;
   error: string | null;
 };
+
+// User preferences for plan generation
+export interface PlanPreferences {
+  wakeTime: string;
+  sleepTime: string;
+  lunchBreakStart: string;
+  lunchBreakDuration: number;
+}
 
 // Default time configuration
 const DEFAULT_TIME_CONFIG: TimeSlotConfig = {
@@ -42,9 +50,12 @@ export const planningService = {
     client: DbClient,
     userId: string,
     date: Date,
-    regenerate: boolean = false
+    regenerate: boolean = false,
+    preferences?: PlanPreferences
   ): Promise<ServiceResult<GeneratedPlan & { slots: PlanSlot[] }>> {
     const dateStr = date.toISOString().split('T')[0];
+    
+    console.log('[PlanningService] generatePlan called:', { dateStr, regenerate, hasPreferences: !!preferences });
 
     // Check for existing plan
     const { data: existingPlan, error: existingError } = await client
@@ -54,11 +65,18 @@ export const planningService = {
       .eq('date', dateStr)
       .single();
 
+    console.log('[PlanningService] Existing plan check:', { 
+      hasExisting: !!existingPlan, 
+      regenerate,
+      willReturnExisting: existingPlan && !regenerate 
+    });
+
     if (existingError && existingError.code !== 'PGRST116') {
       return { data: null, error: existingError.message };
     }
 
     if (existingPlan && !regenerate) {
+      console.log('[PlanningService] Returning existing plan without regeneration');
       // Return existing plan with slots
       const { data: slots, error: slotsError } = await client
         .from('lifeos_plan_slots')
@@ -146,6 +164,16 @@ export const planningService = {
       (taskDomainData ?? []).forEach((d) => domainMap.set(d.id, d));
     }
 
+    // Build time config from preferences
+    const timeConfig: TimeSlotConfig = preferences
+      ? {
+          dayStart: preferences.wakeTime,
+          dayEnd: preferences.sleepTime,
+          slotDuration: DEFAULT_TIME_CONFIG.slotDuration,
+          minBreakBetweenSlots: DEFAULT_TIME_CONFIG.minBreakBetweenSlots,
+        }
+      : DEFAULT_TIME_CONFIG;
+
     // Prepare scheduling input
     const schedulingInput: SchedulingInput = {
       date: dateStr,
@@ -161,11 +189,33 @@ export const planningService = {
         domain: t.domain_id ? domainMap.get(t.domain_id) : null,
       })) as (Task & { domain?: Domain | null })[],
       existingSlots: [],
-      timeConfig: DEFAULT_TIME_CONFIG,
+      timeConfig,
+      preferences: preferences
+        ? {
+            preferredWakeTime: preferences.wakeTime,
+            preferredSleepTime: preferences.sleepTime,
+            lunchBreakStart: preferences.lunchBreakStart,
+            lunchBreakDuration: preferences.lunchBreakDuration,
+          }
+        : undefined,
     };
+
+    console.log('[Planning] Scheduling input:', {
+      date: schedulingInput.date,
+      routineInstancesCount: schedulingInput.routineInstances.length,
+      tasksCount: schedulingInput.tasks.length,
+      timeConfig: schedulingInput.timeConfig,
+      preferences: schedulingInput.preferences,
+    });
 
     // Run AI scheduling
     const schedulingResult = await scheduleDay(schedulingInput);
+
+    console.log('[Planning] Scheduling result:', {
+      slotsCount: schedulingResult.slots.length,
+      unscheduledCount: schedulingResult.unscheduled.length,
+      score: schedulingResult.optimizationScore,
+    });
 
     // Create or update plan
     let planId: string;

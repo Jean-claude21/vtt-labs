@@ -18,19 +18,32 @@ import type { RoutineInstance, RoutineTemplate } from '../schema/routines.schema
 import type { Task } from '../schema/tasks.schema';
 import type { Domain } from '../schema/domains.schema';
 
+export interface PlanGenerationPreferences {
+  wakeTime: string;
+  sleepTime: string;
+  lunchBreakStart: string;
+  lunchBreakDuration: number;
+}
+
 /**
  * Generate a plan for a specific date
  */
 export async function generatePlan(
   dateStr: string,
-  regenerate: boolean = false
+  regenerate: boolean = false,
+  preferences?: PlanGenerationPreferences
 ): Promise<ActionResult<GeneratedPlan & { slots: PlanSlot[] }>> {
+  console.log('[generatePlan ACTION] Starting with:', { dateStr, regenerate, preferences });
+  
   const supabase = await createSSRClient();
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
+    console.log('[generatePlan ACTION] Auth error:', authError);
     return { data: null, error: 'Non authentifié' };
   }
+
+  console.log('[generatePlan ACTION] User:', user.id);
 
   // Parse and validate date
   const date = new Date(dateStr);
@@ -42,8 +55,15 @@ export async function generatePlan(
     supabase, 
     user.id, 
     date, 
-    regenerate
+    regenerate,
+    preferences
   );
+  
+  console.log('[generatePlan ACTION] Result:', { 
+    hasData: !!result.data, 
+    error: result.error,
+    slotsCount: result.data?.slots?.length 
+  });
   
   return result;
 }

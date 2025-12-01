@@ -135,7 +135,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
+              {features.map((feature) => (
                   <div
                       key={feature.title}
                       className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"

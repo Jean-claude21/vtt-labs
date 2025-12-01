@@ -9,7 +9,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Filter, Search, ListFilter, LayoutGrid, List } from 'lucide-react';
+import { Plus, Filter, Search, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

@@ -16,13 +16,12 @@ import {
   FolderKanban, 
   RotateCcw, 
   ListTodo,
-  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DayNavigator } from '@/features/lifeos/components/planning/day-navigator';
-import { GeneratePlanButton } from '@/features/lifeos/components/planning/generate-plan-button';
+import { GeneratePlanButton, type PlanPreferences } from '@/features/lifeos/components/planning/generate-plan-button';
 import { TimelineView } from '@/features/lifeos/components/planning/timeline-view';
 import { 
   generatePlan, 
@@ -132,11 +131,15 @@ export function PlanningDashboard({
   };
 
   // Handle plan generation
-  const handleGeneratePlan = async (regenerate: boolean) => {
+  const handleGeneratePlan = async (regenerate: boolean, preferences?: PlanPreferences) => {
     const dateStr = currentDate.toISOString().split('T')[0];
     
+    console.log('[Dashboard] handleGeneratePlan called with:', { dateStr, regenerate, preferences });
+    
     try {
-      const result = await generatePlan(dateStr, regenerate);
+      const result = await generatePlan(dateStr, regenerate, preferences);
+      
+      console.log('[Dashboard] generatePlan result:', result);
       
       if (result.error) {
         toast.error('Erreur de génération', { description: result.error });
@@ -156,7 +159,7 @@ export function PlanningDashboard({
       startTransition(() => {
         router.refresh();
       });
-    } catch (err) {
+    } catch {
       toast.error('Erreur inattendue');
     }
   };
@@ -202,7 +205,7 @@ export function PlanningDashboard({
           ? `Score: ${result.data.completion_score}%` 
           : undefined,
       });
-    } catch (err) {
+    } catch {
       toast.error('Erreur inattendue');
     }
   };
@@ -232,7 +235,7 @@ export function PlanningDashboard({
       }));
       
       toast.info('Routine passée');
-    } catch (err) {
+    } catch {
       toast.error('Erreur inattendue');
     }
   };
@@ -262,7 +265,7 @@ export function PlanningDashboard({
       }));
       
       toast.success('Tâche complétée !');
-    } catch (err) {
+    } catch {
       toast.error('Erreur inattendue');
     }
   };
@@ -292,7 +295,7 @@ export function PlanningDashboard({
       }));
       
       toast.info('Tâche annulée');
-    } catch (err) {
+    } catch {
       toast.error('Erreur inattendue');
     }
   };

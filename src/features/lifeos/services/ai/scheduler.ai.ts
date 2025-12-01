@@ -63,8 +63,9 @@ export interface SchedulingOutput {
 }
 
 /**
- * Generate time slots for a day
+ * Generate time slots for a day (kept for potential future use)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateTimeSlots(
   startHour: number,
   endHour: number,
@@ -115,7 +116,47 @@ function minutesToTime(minutes: number): string {
 }
 
 /**
- * Get preferred time slot bounds
+ * Get duration in minutes from constraints (handles old and new formats)
+ */
+function getDurationMinutes(constraints: RoutineConstraints | null | undefined): number {
+  if (!constraints?.duration) return 30;
+  // New format: { required: boolean, minutes: number }
+  if (typeof constraints.duration === 'object' && 'minutes' in constraints.duration) {
+    return constraints.duration.minutes;
+  }
+  // Old format: direct number
+  if (typeof constraints.duration === 'number') {
+    return constraints.duration;
+  }
+  return 30;
+}
+
+/**
+ * Get time slot bounds from constraints (handles old and new formats)
+ */
+function getTimeSlotFromConstraints(
+  constraints: RoutineConstraints | null | undefined
+): { start: number; end: number } | null {
+  if (!constraints?.timeSlot) return null;
+  
+  // New format: { required: boolean, startTime: "HH:MM", endTime: "HH:MM" }
+  if (typeof constraints.timeSlot === 'object' && 'startTime' in constraints.timeSlot) {
+    return {
+      start: timeToMinutes(constraints.timeSlot.startTime),
+      end: timeToMinutes(constraints.timeSlot.endTime),
+    };
+  }
+  
+  // Old format: string like "morning", "afternoon", etc.
+  if (typeof constraints.timeSlot === 'string') {
+    return getTimeSlotBounds(constraints.timeSlot);
+  }
+  
+  return null;
+}
+
+/**
+ * Get preferred time slot bounds (for old string format)
  */
 function getTimeSlotBounds(slot: string): { start: number; end: number } {
   const bounds: Record<string, { start: number; end: number }> = {
@@ -139,6 +180,13 @@ function simpleSchedule(input: SchedulingInput): SchedulingOutput {
   
   // Track occupied time
   const occupiedSlots: { start: number; end: number }[] = [];
+  
+  // Reserve lunch break if configured
+  if (input.preferences?.lunchBreakStart && input.preferences?.lunchBreakDuration) {
+    const lunchStart = timeToMinutes(input.preferences.lunchBreakStart);
+    const lunchEnd = lunchStart + input.preferences.lunchBreakDuration;
+    occupiedSlots.push({ start: lunchStart, end: lunchEnd });
+  }
   
   // Add existing slots to occupied
   for (const slot of input.existingSlots) {
@@ -202,15 +250,15 @@ function simpleSchedule(input: SchedulingInput): SchedulingOutput {
   // Schedule fixed routines
   for (const routine of fixedRoutines) {
     const constraints = routine.template.constraints as RoutineConstraints | null;
-    const duration = constraints?.duration ?? 30;
+    const duration = getDurationMinutes(constraints);
     
     let preferredStart: number | undefined;
     let preferredEnd: number | undefined;
     
-    if (constraints?.timeSlot) {
-      const bounds = getTimeSlotBounds(constraints.timeSlot);
-      preferredStart = bounds.start;
-      preferredEnd = bounds.end;
+    const timeSlotBounds = getTimeSlotFromConstraints(constraints);
+    if (timeSlotBounds) {
+      preferredStart = timeSlotBounds.start;
+      preferredEnd = timeSlotBounds.end;
     }
     
     const slot = findAvailableSlot(duration, preferredStart, preferredEnd);
@@ -222,7 +270,7 @@ function simpleSchedule(input: SchedulingInput): SchedulingOutput {
         itemId: routine.id,
         startTime: minutesToTime(slot.start),
         endTime: minutesToTime(slot.end),
-        aiReasoning: `Routine prioritaire "${routine.template.name}" planifiée${constraints?.timeSlot ? ` dans le créneau ${constraints.timeSlot}` : ''}.`,
+        aiReasoning: `Routine prioritaire "${routine.template.name}" planifiée${timeSlotBounds ? ` (${minutesToTime(timeSlotBounds.start)}-${minutesToTime(timeSlotBounds.end)})` : ''}.`,
         isFixed: true,
       });
     } else {
@@ -237,15 +285,15 @@ function simpleSchedule(input: SchedulingInput): SchedulingOutput {
   // Schedule flexible routines
   for (const routine of flexibleRoutines) {
     const constraints = routine.template.constraints as RoutineConstraints | null;
-    const duration = constraints?.duration ?? 30;
+    const duration = getDurationMinutes(constraints);
     
     let preferredStart: number | undefined;
     let preferredEnd: number | undefined;
     
-    if (constraints?.timeSlot) {
-      const bounds = getTimeSlotBounds(constraints.timeSlot);
-      preferredStart = bounds.start;
-      preferredEnd = bounds.end;
+    const timeSlotBounds = getTimeSlotFromConstraints(constraints);
+    if (timeSlotBounds) {
+      preferredStart = timeSlotBounds.start;
+      preferredEnd = timeSlotBounds.end;
     }
     
     const slot = findAvailableSlot(duration, preferredStart, preferredEnd);
@@ -257,7 +305,7 @@ function simpleSchedule(input: SchedulingInput): SchedulingOutput {
         itemId: routine.id,
         startTime: minutesToTime(slot.start),
         endTime: minutesToTime(slot.end),
-        aiReasoning: `Routine flexible "${routine.template.name}" placée${constraints?.timeSlot ? ` dans le créneau ${constraints.timeSlot}` : ' au premier créneau disponible'}.`,
+        aiReasoning: `Routine flexible "${routine.template.name}" placée${timeSlotBounds ? ` (${minutesToTime(timeSlotBounds.start)}-${minutesToTime(timeSlotBounds.end)})` : ' au premier créneau disponible'}.`,
         isFixed: false,
       });
     } else {
