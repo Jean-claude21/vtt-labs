@@ -236,16 +236,20 @@ export const routineInstanceService = {
   },
 
   /**
-   * Complete a routine instance
+   * Complete a routine instance with tracking data
    */
   async complete(
     client: DbClient,
     userId: string,
     instanceId: string,
-    actualValue?: number,
-    mood?: number,
-    energyLevel?: number,
-    notes?: string
+    input: {
+      actual_value?: number;
+      mood_before?: number;
+      mood_after?: number;
+      energy_level?: number;
+      notes?: string;
+      status?: 'completed' | 'partial';
+    }
   ): Promise<ServiceResult<RoutineInstance>> {
     // Get instance with template to calculate score
     const { data: instance, error: fetchError } = await client
@@ -263,24 +267,25 @@ export const routineInstanceService = {
     }
 
     // Calculate completion score
-    let completionScore = 100; // Default full score
-    const constraints = (instance.template as { constraints?: { targetValue?: number } })?.constraints;
+    let completionScore = input.status === 'partial' ? 50 : 100; // Default based on status
+    const constraints = (instance.template as { constraints?: { targetValue?: { value?: number } } })?.constraints;
     
-    if (constraints?.targetValue && actualValue !== undefined) {
-      completionScore = Math.min(100, Math.round((actualValue / constraints.targetValue) * 100));
+    if (constraints?.targetValue?.value && input.actual_value !== undefined) {
+      completionScore = Math.min(100, Math.round((input.actual_value / constraints.targetValue.value) * 100));
     }
 
     // Update instance
     const { data: updated, error: updateError } = await client
       .from('lifeos_routine_instances')
       .update({
-        status: 'completed',
+        status: input.status ?? 'completed',
         completed_at: new Date().toISOString(),
-        actual_value: actualValue ?? null,
+        actual_value: input.actual_value ?? null,
         completion_score: completionScore,
-        mood: mood ?? null,
-        energy_level: energyLevel ?? null,
-        notes: notes ?? null,
+        mood_before: input.mood_before ?? null,
+        mood_after: input.mood_after ?? null,
+        energy_level: input.energy_level ?? null,
+        notes: input.notes ?? null,
       })
       .eq('id', instanceId)
       .eq('user_id', userId)
@@ -291,15 +296,17 @@ export const routineInstanceService = {
       return { data: null, error: updateError.message };
     }
 
-    // Update streak using RPC function
-    const { error: streakError } = await client.rpc('update_routine_streak', {
-      p_template_id: instance.template_id,
-      p_user_id: userId,
-    });
+    // Update streak using RPC function (only for completed, not partial)
+    if (input.status === 'completed') {
+      const { error: streakError } = await client.rpc('update_routine_streak', {
+        p_template_id: instance.template_id,
+        p_user_id: userId,
+      });
 
-    if (streakError) {
-      console.error('Failed to update streak:', streakError);
-      // Don't fail the completion, just log the error
+      if (streakError) {
+        console.error('Failed to update streak:', streakError);
+        // Don't fail the completion, just log the error
+      }
     }
 
     return { data: updated, error: null };
@@ -347,6 +354,47 @@ export const routineInstanceService = {
     }
 
     return { data, error: null };
+  },
+
+  /**
+   * Generate routine instances for a date range
+   * Ensures all active routines have instances for each day they should occur
+   */
+  async generateForDateRange(
+    client: DbClient,
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<ServiceResult<number>> {
+    try {
+      // Generate dates in range
+      const dates: Date[] = [];
+      const current = new Date(startDate);
+      const end = new Date(endDate);
+      
+      while (current <= end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+
+      let totalCreated = 0;
+
+      // Generate instances for each date
+      for (const date of dates) {
+        const result = await this.generateForDate(client, userId, date);
+        if (!result.error && result.data) {
+          // Count is tracked internally
+          totalCreated++;
+        }
+      }
+
+      return { data: totalCreated, error: null };
+    } catch (err) {
+      return {
+        data: null,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
+    }
   },
 
   /**

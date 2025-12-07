@@ -751,6 +751,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      lifeos_seed_demo_data: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       lifeos_update_streak: {
         Args: { p_completed_date: string; p_routine_template_id: string }
         Returns: {

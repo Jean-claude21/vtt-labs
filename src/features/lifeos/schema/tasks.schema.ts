@@ -46,9 +46,9 @@ export const createTaskSchema = z.object({
     .min(1, 'Title is required')
     .max(200, 'Title must be 200 characters or less'),
   description: z.string().max(2000).nullable().optional(),
-  domain_id: z.string().uuid('Invalid domain ID').nullable().optional(),
-  project_id: z.string().uuid('Invalid project ID').nullable().optional(),
-  parent_task_id: z.string().uuid('Invalid parent task ID').nullable().optional(),
+  domain_id: z.string().uuid({ message: 'Invalid domain ID' }).nullable().optional(),
+  project_id: z.string().uuid({ message: 'Invalid project ID' }).nullable().optional(),
+  parent_task_id: z.string().uuid({ message: 'Invalid parent task ID' }).nullable().optional(),
   priority: taskPrioritySchema.optional().default('medium'),
   estimated_minutes: z.number().int().positive().nullable().optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
@@ -63,7 +63,7 @@ export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 // ============================================================================
 
 export const updateTaskSchema = z.object({
-  id: z.string().uuid('Invalid task ID'),
+  id: z.string().uuid({ message: 'Invalid task ID' }),
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
@@ -84,7 +84,7 @@ export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 // ============================================================================
 
 export const updateTaskStatusSchema = z.object({
-  id: z.string().uuid('Invalid task ID'),
+  id: z.string().uuid({ message: 'Invalid task ID' }),
   status: taskStatusSchema,
 });
 
@@ -125,7 +125,7 @@ export type TaskSortOptions = z.infer<typeof taskSortOptionsSchema>;
 // ============================================================================
 
 export const addTimeToTaskSchema = z.object({
-  id: z.string().uuid('Invalid task ID'),
+  id: z.string().uuid({ message: 'Invalid task ID' }),
   minutes: z.number().int().positive('Minutes must be positive'),
 });
 
@@ -147,12 +147,35 @@ export const taskSchema = z.object({
   priority: taskPrioritySchema,
   estimated_minutes: z.number().nullable(),
   actual_minutes: z.number(),
+  // Deadline (when it MUST be done)
   due_date: z.string().nullable(),
   due_time: z.string().nullable(),
   is_deadline_strict: z.boolean(),
+  // Scheduled (when I PLAN to work on it) - V2 Calendar
+  scheduled_date: z.string().nullable().optional(),
+  scheduled_time: z.string().nullable().optional(),
+  // Timer fields (V2)
+  timer_started_at: z.string().nullable().optional(),
+  timer_accumulated_seconds: z.number().default(0),
+  timer_is_running: z.boolean().default(false),
   created_at: z.string(),
   updated_at: z.string(),
 });
+
+// ============================================================================
+// TIMER ACTIONS
+// ============================================================================
+
+export const startTimerSchema = z.object({
+  id: z.string().uuid({ message: 'Invalid task ID' }),
+});
+
+export const stopTimerSchema = z.object({
+  id: z.string().uuid({ message: 'Invalid task ID' }),
+});
+
+export type StartTimerInput = z.infer<typeof startTimerSchema>;
+export type StopTimerInput = z.infer<typeof stopTimerSchema>;
 
 export type Task = z.infer<typeof taskSchema>;
 

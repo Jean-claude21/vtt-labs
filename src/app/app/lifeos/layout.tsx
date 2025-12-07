@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'LifeOS - Planning',
-  description: 'Intelligent life planning with AI-powered scheduling',
+  description: 'Calendar-centric life planning with routines, tasks, and projects',
 };
 
 export default function LifeOSLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Module header could go here in the future */}
+      {/* Main content area - navigation is now in global sidebar */}
       <main className="flex-1">{children}</main>
     </div>
   );

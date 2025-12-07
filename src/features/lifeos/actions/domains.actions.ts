@@ -28,6 +28,7 @@ export type ActionResult<T> = {
 
 /**
  * Get all domains for the current user
+ * Auto-seeds demo data (domains, routines, tasks) if user has no domains yet
  */
 export async function getDomains(): Promise<ActionResult<Domain[]>> {
   const supabase = await createSSRClient();
@@ -37,7 +38,27 @@ export async function getDomains(): Promise<ActionResult<Domain[]>> {
     return { data: null, error: 'Not authenticated' };
   }
 
-  return domainService.getAll(supabase, user.id);
+  // Try to get existing domains
+  const result = await domainService.getAll(supabase, user.id);
+  
+  // If no domains exist, seed all demo data (domains, routines, tasks, preferences)
+  if (result.data?.length === 0) {
+    // Call the SQL function to seed all demo data
+    const { error: seedError } = await supabase.rpc('lifeos_seed_demo_data', {
+      p_user_id: user.id
+    });
+    
+    if (seedError) {
+      console.error('[LifeOS] Error seeding demo data:', seedError);
+      // Fallback to just seeding domains
+      return domainService.seedDefaults(supabase, user.id);
+    }
+    
+    // Return the newly created domains
+    return domainService.getAll(supabase, user.id);
+  }
+  
+  return result;
 }
 
 /**

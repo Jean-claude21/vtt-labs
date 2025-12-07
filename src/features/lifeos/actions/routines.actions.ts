@@ -212,11 +212,14 @@ export async function toggleRoutineActive(
  * Complete a routine instance
  */
 export async function completeRoutineInstance(
-  instanceId: string,
-  actualValue?: number,
-  mood?: number,
-  energyLevel?: number,
-  notes?: string
+  input: {
+    id: string;
+    actual_value?: number;
+    mood_before?: number;
+    mood_after?: number;
+    energy_level?: number;
+    notes?: string;
+  }
 ): Promise<ActionResult<RoutineInstance>> {
   const supabase = await createSSRClient();
   
@@ -225,28 +228,38 @@ export async function completeRoutineInstance(
     return { data: null, error: 'Non authentifié' };
   }
 
-  if (!instanceId) {
+  if (!input.id) {
     return { data: null, error: 'ID de routine instance requis' };
   }
 
   const result = await routineInstanceService.complete(
     supabase, 
     user.id, 
-    instanceId,
-    actualValue,
-    mood,
-    energyLevel,
-    notes
+    input.id,
+    {
+      actual_value: input.actual_value,
+      mood_before: input.mood_before,
+      mood_after: input.mood_after,
+      energy_level: input.energy_level,
+      notes: input.notes,
+      status: 'completed',
+    }
   );
   return result;
 }
 
 /**
- * Skip a routine instance with optional reason
+ * Mark a routine instance as partially completed
  */
-export async function skipRoutineInstance(
-  instanceId: string,
-  reason?: string
+export async function partialRoutineInstance(
+  input: {
+    id: string;
+    actual_value?: number;
+    mood_before?: number;
+    mood_after?: number;
+    energy_level?: number;
+    notes?: string;
+  }
 ): Promise<ActionResult<RoutineInstance>> {
   const supabase = await createSSRClient();
   
@@ -255,11 +268,47 @@ export async function skipRoutineInstance(
     return { data: null, error: 'Non authentifié' };
   }
 
-  if (!instanceId) {
+  if (!input.id) {
     return { data: null, error: 'ID de routine instance requis' };
   }
 
-  const result = await routineInstanceService.skip(supabase, user.id, instanceId, reason);
+  const result = await routineInstanceService.complete(
+    supabase, 
+    user.id, 
+    input.id,
+    {
+      actual_value: input.actual_value,
+      mood_before: input.mood_before,
+      mood_after: input.mood_after,
+      energy_level: input.energy_level,
+      notes: input.notes,
+      status: 'partial',
+    }
+  );
+  return result;
+}
+
+/**
+ * Skip a routine instance with reason
+ */
+export async function skipRoutineInstance(
+  input: {
+    id: string;
+    skip_reason: string;
+  }
+): Promise<ActionResult<RoutineInstance>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!input.id) {
+    return { data: null, error: 'ID de routine instance requis' };
+  }
+
+  const result = await routineInstanceService.skip(supabase, user.id, input.id, input.skip_reason);
   return result;
 }
 

@@ -29,7 +29,7 @@ export const createProjectSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must be 100 characters or less'),
   description: z.string().max(2000).nullable().optional(),
-  domain_id: z.string().uuid('Invalid domain ID').nullable().optional(),
+  domain_id: z.string().uuid({ message: 'Invalid domain ID' }).nullable().optional(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
 });
@@ -41,7 +41,7 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 // ============================================================================
 
 export const updateProjectSchema = z.object({
-  id: z.string().uuid('Invalid project ID'),
+  id: z.string().uuid({ message: 'Invalid project ID' }),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(2000).nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
@@ -99,3 +99,75 @@ export const projectWithMetricsSchema = projectSchema.extend({
 });
 
 export type ProjectWithMetrics = z.infer<typeof projectWithMetricsSchema>;
+
+// ============================================================================
+// TASK DEPENDENCIES (For Gantt)
+// ============================================================================
+
+export const dependencyTypeSchema = z.enum([
+  'finish_to_start',  // Default: Task B starts after Task A finishes
+  'start_to_start',   // Task B starts when Task A starts
+  'finish_to_finish', // Task B finishes when Task A finishes
+  'start_to_finish',  // Task B finishes when Task A starts
+]);
+
+export type DependencyType = z.infer<typeof dependencyTypeSchema>;
+
+export const taskDependencySchema = z.object({
+  id: z.string().uuid(),
+  predecessor_task_id: z.string().uuid(),
+  successor_task_id: z.string().uuid(),
+  dependency_type: dependencyTypeSchema,
+  lag_days: z.number().default(0), // Delay between tasks
+  created_at: z.string(),
+});
+
+export type TaskDependency = z.infer<typeof taskDependencySchema>;
+
+export const createTaskDependencySchema = z.object({
+  predecessor_task_id: z.string().uuid('Invalid predecessor task ID'),
+  successor_task_id: z.string().uuid('Invalid successor task ID'),
+  dependency_type: dependencyTypeSchema.default('finish_to_start'),
+  lag_days: z.number().int().min(-30).max(365).default(0),
+});
+
+export type CreateTaskDependencyInput = z.infer<typeof createTaskDependencySchema>;
+
+export const deleteTaskDependencySchema = z.object({
+  id: z.string().uuid('Invalid dependency ID'),
+});
+
+export type DeleteTaskDependencyInput = z.infer<typeof deleteTaskDependencySchema>;
+
+// ============================================================================
+// GANTT DATA
+// ============================================================================
+
+export const ganttTaskSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  start: z.string().nullable(), // start_date or scheduled_date
+  end: z.string().nullable(),   // end_date calculated from duration
+  duration: z.number().nullable(), // In days
+  progress: z.number().min(0).max(100).default(0), // Percentage
+  status: z.string(),
+  priority: z.string().nullable(),
+  dependencies: z.array(z.string().uuid()).default([]), // Predecessor IDs
+  domainColor: z.string().nullable(),
+  domainName: z.string().nullable(),
+});
+
+export type GanttTask = z.infer<typeof ganttTaskSchema>;
+
+export const ganttDataSchema = z.object({
+  projectId: z.string().uuid(),
+  projectName: z.string(),
+  tasks: z.array(ganttTaskSchema),
+  dependencies: z.array(taskDependencySchema),
+  dateRange: z.object({
+    start: z.string(),
+    end: z.string(),
+  }),
+});
+
+export type GanttData = z.infer<typeof ganttDataSchema>;

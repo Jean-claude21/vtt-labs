@@ -1,19 +1,22 @@
 /**
- * LifeOS Main Page (Planning Dashboard)
+ * LifeOS Main Page (Calendar View)
  * 
- * Central hub for daily planning and timeline view.
+ * Calendar-centric view showing routines and tasks.
+ * This is the main entry point for LifeOS.
  * 
  * @module app/lifeos
  */
 
 import { createSSRClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { getPlanForDate } from '@/features/lifeos/actions/planning.actions';
-import { PlanningDashboard } from './planning-dashboard';
+import { getCalendarEvents } from '@/features/lifeos/actions/calendar.actions';
+import { getDomains } from '@/features/lifeos/actions/domains.actions';
+import { getUnscheduledTasks } from '@/features/lifeos/actions/tasks.actions';
+import { CalendarDashboard } from './calendar-dashboard';
 
 export const metadata = {
-  title: 'LifeOS | Planning Dashboard',
-  description: 'Your intelligent life planning system',
+  title: 'LifeOS | Calendrier',
+  description: 'Vue calendrier de vos routines et tâches',
 };
 
 export default async function LifeOSPage() {
@@ -26,18 +29,36 @@ export default async function LifeOSPage() {
     redirect('/auth/login');
   }
 
-  // Get today's date
+  // Get current week range
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const weekStart = getWeekStart(today);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
 
-  // Fetch today's plan if it exists
-  const planResult = await getPlanForDate(todayStr);
+  // Fetch events, domains, and unscheduled tasks in parallel
+  const [eventsResult, domainsResult, unscheduledResult] = await Promise.all([
+    getCalendarEvents(
+      weekStart.toISOString().split('T')[0],
+      weekEnd.toISOString().split('T')[0]
+    ),
+    getDomains(),
+    getUnscheduledTasks(),
+  ]);
 
   return (
-    <PlanningDashboard
-      initialDate={todayStr}
-      initialPlan={planResult.data ?? null}
-      error={planResult.error}
+    <CalendarDashboard
+      initialEvents={eventsResult.data ?? []}
+      initialDomains={domainsResult.data ?? []}
+      initialUnscheduledTasks={unscheduledResult.data ?? []}
+      error={eventsResult.error}
     />
   );
+}
+
+// Helper to get Monday of current week
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
 }

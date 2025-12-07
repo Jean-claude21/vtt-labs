@@ -1,4 +1,8 @@
-# Intelligent Personal Planning Engine: Technical Plan
+# LifeOS Planning Module: Technical Plan V2
+
+> **Version**: 2.0.0  
+> **Date**: 2025-12-06  
+> **Input**: spec.md V2
 
 This document translates the functional requirements from `spec.md` into a technical blueprint, adhering to the principles defined in `constitution.md`.
 
@@ -6,143 +10,493 @@ This document translates the functional requirements from `spec.md` into a techn
 
 ## 1. Architecture Overview
 
-The application will follow a modern web architecture based on the project constitution.
+### 1.1 Tech Stack
 
--   **Frontend Framework**: [Next.js 15](https://nextjs.org/) (App Router) will be used for both server-rendered and client-side components.
--   **UI Library**: [Shadcn UI](https://ui.shadcn.com/) will provide the base components, customized to match the specified Linear-like design system.
--   **Styling**: [Tailwind CSS](https://tailwindcss.com/) will be used for all styling, in conjunction with Shadcn UI.
--   **Backend Logic**: All client-server communication will be handled exclusively through [Next.js Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations).
--   **Database**: [Supabase Postgres](https://supabase.com/database) will serve as the primary database.
--   **Data Access Layer**: All database mutations will be performed via [Supabase RPC (Remote Procedure Calls)](https://supabase.com/docs/guides/database/functions), and complex queries will use Supabase Views for efficiency, as mandated by the constitution.
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Framework** | Next.js (App Router) | 15.x |
+| **Runtime** | React | 19.x |
+| **Language** | TypeScript | 5.x (strict) |
+| **Database** | Supabase Postgres | Latest |
+| **Auth** | Supabase Auth | Latest |
+| **UI Library** | Shadcn UI + Kibo-UI | Latest |
+| **Styling** | TailwindCSS | 4.x |
+| **Validation** | Zod | 3.x |
+| **Calendar** | Kibo-UI Calendar | Latest |
+| **Gantt** | Kibo-UI Gantt | Latest |
+| **State** | Jotai (for calendar) | Latest |
 
----
+### 1.2 External Dependencies (New)
 
-## 2. Database Schema (Supabase)
+```bash
+# Kibo-UI Components
+npx kibo-ui add calendar
+npx kibo-ui add mini-calendar
+npx kibo-ui add gantt
 
-The following tables will be created in the `public` schema within Supabase.
-
-### Table: `domains`
-Stores the user-defined "Domains of Life."
-
-| Column      | Type        | Constraints                               |
-| :---------- | :---------- | :---------------------------------------- |
-| `id`        | `uuid`      | **Primary Key**, default `gen_random_uuid()` |
-| `user_id`   | `uuid`      | **Foreign Key** -> `auth.users(id)`       |
-| `name`      | `text`      | `NOT NULL`                                |
-| `color`     | `text`      | `NOT NULL` (e.g., hex color code)         |
-| `created_at`| `timestamptz` | `NOT NULL`, default `now()`               |
-
-### Table: `routines`
-Stores user-defined recurring activities.
-
-| Column                | Type        | Constraints                               |
-| :-------------------- | :---------- | :---------------------------------------- |
-| `id`                  | `uuid`      | **Primary Key**, default `gen_random_uuid()` |
-| `user_id`             | `uuid`      | **Foreign Key** -> `auth.users(id)`       |
-| `domain_id`           | `uuid`      | **Foreign Key** -> `public.domains(id)`   |
-| `title`               | `text`      | `NOT NULL`                                |
-| `duration_minutes`    | `integer`   | `NOT NULL`                                |
-| `frequency`           | `text`      | `NOT NULL` (e.g., 'daily', 'weekly')      |
-| `preferred_time_slot` | `text`      | `NOT NULL` (e.g., 'morning', 'evening')   |
-| `created_at`          | `timestamptz` | `NOT NULL`, default `now()`               |
-
-### Table: `tasks`
-Stores user-defined one-off tasks.
-
-| Column          | Type        | Constraints                               |
-| :-------------- | :---------- | :---------------------------------------- |
-| `id`            | `uuid`      | **Primary Key**, default `gen_random_uuid()` |
-| `user_id`       | `uuid`      | **Foreign Key** -> `auth.users(id)`       |
-| `domain_id`     | `uuid`      | **Foreign Key** -> `public.domains(id)`   |
-| `title`         | `text`      | `NOT NULL`                                |
-| `duration_minutes` | `integer`   | `NOT NULL`                                |
-| `deadline`      | `timestamptz` | `NULLABLE`                                |
-| `is_completed`  | `boolean`   | `NOT NULL`, default `false`               |
-| `created_at`    | `timestamptz` | `NOT NULL`, default `now()`               |
-
-### Table: `schedule`
-Stores the generated schedule, containing events, routines, and tasks.
-
-| Column              | Type        | Constraints                               |
-| :------------------ | :---------- | :---------------------------------------- |
-| `id`                | `uuid`      | **Primary Key**, default `gen_random_uuid()` |
-| `user_id`           | `uuid`      | **Foreign Key** -> `auth.users(id)`       |
-| `item_id`           | `uuid`      | `NULLABLE` (FK to `tasks` or `routines`)  |
-| `item_type`         | `text`      | `NOT NULL` (e.g., 'task', 'routine', 'external') |
-| `title`             | `text`      | `NOT NULL` (Denormalized for performance) |
-| `start_time`        | `timestamptz` | `NOT NULL`                                |
-| `end_time`          | `timestamptz` | `NOT NULL`                                |
-| `execution_status`  | `text`      | `NOT NULL`, default `'pending'`           |
-| `actual_start_time` | `timestamptz` | `NULLABLE`                                |
-| `actual_end_time`   | `timestamptz` | `NULLABLE`                                |
+# Additional
+pnpm add date-fns rrule
+```
 
 ---
 
-## 3. API Layer (Supabase RPC)
+## 2. Database Schema
 
-The following RPC functions will be created to handle all data mutations, as required by the constitution.
+### 2.1 Existing Tables (No Changes)
 
--   `create_domain(name text, color text)`
--   `update_domain(p_id uuid, p_name text, p_color text)`
--   `delete_domain(p_id uuid)`
--   `create_routine(domain_id uuid, title text, ...)`
--   `update_routine(p_id uuid, ...)`
--   `delete_routine(p_id uuid)`
--   `create_task(domain_id uuid, title text, ...)`
--   `update_task(p_id uuid, ...)`
--   `delete_task(p_id uuid)`
--   `update_schedule_item_status(p_id uuid, p_status text, p_actual_start timestamptz, p_actual_end timestamptz)`
--   `generate_schedule(p_from_date date, p_to_date date)`: The core RPC that orchestrates the schedule generation logic.
+- `lifeos_domains` ✅
+- `lifeos_projects` ✅
+- `lifeos_routine_templates` ✅
+- `lifeos_routine_instances` ✅
+- `lifeos_streaks` ✅
+- `lifeos_generated_plans` ✅ (suspended, keep for future)
+- `lifeos_plan_slots` ✅ (suspended, keep for future)
+
+### 2.2 Modified Tables
+
+#### `lifeos_tasks` (Add Timer Columns)
+
+```sql
+ALTER TABLE lifeos_tasks ADD COLUMN IF NOT EXISTS 
+  timer_started_at TIMESTAMPTZ,
+  timer_accumulated_seconds INTEGER DEFAULT 0,
+  timer_is_running BOOLEAN DEFAULT false;
+```
+
+#### `lifeos_routine_instance_tasks` (Add Dynamic Flag)
+
+```sql
+ALTER TABLE lifeos_routine_instance_tasks ADD COLUMN IF NOT EXISTS 
+  is_dynamic BOOLEAN DEFAULT false;
+```
+
+### 2.3 New Tables
+
+#### `lifeos_tracking_media`
+
+```sql
+CREATE TABLE lifeos_tracking_media (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  entity_type TEXT NOT NULL, -- 'routine_instance' | 'task' | extensible
+  entity_id UUID NOT NULL,
+  file_path TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  file_size INTEGER,
+  media_category TEXT CHECK (media_category IN ('photo', 'video', 'audio', 'document', 'other')),
+  caption TEXT,
+  thumbnail_path TEXT,
+  duration_seconds INTEGER,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Indexes
+CREATE INDEX idx_lifeos_tracking_media_user ON lifeos_tracking_media(user_id);
+CREATE INDEX idx_lifeos_tracking_media_entity ON lifeos_tracking_media(entity_type, entity_id);
+
+-- RLS
+ALTER TABLE lifeos_tracking_media ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own media" ON lifeos_tracking_media
+  FOR ALL USING (user_id = auth.uid());
+```
+
+#### `lifeos_task_dependencies`
+
+```sql
+CREATE TABLE lifeos_task_dependencies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  predecessor_id UUID NOT NULL REFERENCES lifeos_tasks(id) ON DELETE CASCADE,
+  successor_id UUID NOT NULL REFERENCES lifeos_tasks(id) ON DELETE CASCADE,
+  dependency_type TEXT DEFAULT 'finish_to_start' 
+    CHECK (dependency_type IN ('finish_to_start', 'start_to_start', 'finish_to_finish', 'start_to_finish')),
+  lag_days INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(predecessor_id, successor_id),
+  CHECK (predecessor_id != successor_id)
+);
+
+-- Indexes
+CREATE INDEX idx_lifeos_task_deps_predecessor ON lifeos_task_dependencies(predecessor_id);
+CREATE INDEX idx_lifeos_task_deps_successor ON lifeos_task_dependencies(successor_id);
+
+-- RLS (via task ownership)
+ALTER TABLE lifeos_task_dependencies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own task dependencies" ON lifeos_task_dependencies
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM lifeos_tasks t WHERE t.id = predecessor_id AND t.user_id = auth.uid())
+  );
+```
+
+#### `lifeos_user_preferences`
+
+```sql
+CREATE TABLE lifeos_user_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
+  
+  -- Calendar preferences
+  default_calendar_view TEXT DEFAULT 'week' CHECK (default_calendar_view IN ('day', 'week', 'month')),
+  week_starts_on INTEGER DEFAULT 1 CHECK (week_starts_on BETWEEN 0 AND 6),
+  
+  -- Display filters (saved state)
+  show_routines BOOLEAN DEFAULT true,
+  show_tasks BOOLEAN DEFAULT true,
+  show_external_events BOOLEAN DEFAULT true,
+  hidden_domain_ids UUID[] DEFAULT '{}',
+  
+  -- Planning
+  routine_generation_horizon_days INTEGER DEFAULT 14,
+  
+  -- Extensible
+  preferences JSONB DEFAULT '{}',
+  
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE lifeos_user_preferences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own preferences" ON lifeos_user_preferences
+  FOR ALL USING (user_id = auth.uid());
+
+-- Trigger
+CREATE TRIGGER update_lifeos_user_preferences_updated_at
+  BEFORE UPDATE ON lifeos_user_preferences
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
 
 ---
 
-## 4. File Structure & Component Breakdown
+## 3. File Structure
 
-The project will use the feature-based directory structure defined in `constitution.md`.
+### 3.1 App Routes
 
 ```
-src/
+src/app/
 ├── app/
-│   ├── dashboard/page.tsx       # Main view for the generated schedule
-│   ├── settings/page.tsx        # Page for managing domains, routines, etc.
-│   └── statistics/page.tsx      # Page for displaying user statistics
-├── features/
-│   ├── domains/
-│   │   ├── components/          # DomainList, DomainForm
-│   │   ├── actions/domainActions.ts # Server Actions for domains
-│   │   └── schema/domainSchema.ts   # Zod schemas for validation
-│   ├── routines/
-│   │   ├── ...
-│   ├── tasks/
-│   │   ├── ...
-│   ├── calendar-sync/
-│   │   ├── components/          # GoogleCalendarConnectButton
-│   │   ├── actions/calendarActions.ts # Handle OAuth flow
-│   │   └── services/googleCalendar.ts # Google Calendar API client
-│   ├── schedule-generator/
-│   │   ├── components/          # GenerateScheduleButton, ScheduleView
-│   │   └── actions/scheduleActions.ts
-│   ├── execution-tracker/
-│   │   ├── components/          # ScheduleItem with status controls
-│   │   └── actions/trackerActions.ts
-│   └── statistics/
-│       ├── components/          # TimeDistributionChart, CompletionRateChart
-│       └── services/statistics.ts   # Fetches data from Supabase views
-├── components/
-│   └── ui/                      # Shared Shadcn UI components
-└── lib/
-    ├── supabase/                # Supabase client configuration
-    └── utils.ts                 # Shared utility functions
+│   ├── lifeos/
+│   │   ├── layout.tsx              # LifeOS layout (teal accent)
+│   │   ├── page.tsx                # Redirects to /calendar
+│   │   ├── calendar/
+│   │   │   └── page.tsx            # 📅 Main calendar view
+│   │   ├── tasks/
+│   │   │   └── page.tsx            # 📋 Task list/board
+│   │   ├── routines/
+│   │   │   └── page.tsx            # 🔄 Routine templates
+│   │   ├── projects/
+│   │   │   ├── page.tsx            # 📁 Projects list
+│   │   │   └── [id]/
+│   │   │       └── page.tsx        # Project detail + Gantt
+│   │   └── statistics/
+│   │       └── page.tsx            # 📊 Stats dashboard
+│   │
+│   └── settings/
+│       ├── domains/
+│       │   └── page.tsx            # 🎨 Domains management
+│       └── preferences/
+│           └── page.tsx            # ⚙️ User preferences
+```
+
+### 3.2 Feature Structure
+
+```
+src/features/lifeos/
+├── actions/
+│   ├── domains.actions.ts          ✅ Exists
+│   ├── routines.actions.ts         ✅ Exists (update for generation)
+│   ├── tasks.actions.ts            ✅ Exists (add timer actions)
+│   ├── projects.actions.ts         🆕 Create
+│   ├── media.actions.ts            🆕 Create
+│   ├── preferences.actions.ts      🆕 Create
+│   └── planning.actions.ts         ✅ Exists (suspend AI, keep algo)
+│
+├── services/
+│   ├── domains.service.ts          ✅ Exists
+│   ├── routines.service.ts         ✅ Exists
+│   ├── routine-instances.service.ts ✅ Exists (update generation)
+│   ├── tasks.service.ts            ✅ Exists (add timer logic)
+│   ├── projects.service.ts         🆕 Create
+│   ├── media.service.ts            🆕 Create
+│   ├── preferences.service.ts      🆕 Create
+│   └── calendar.service.ts         🆕 Create (data aggregation)
+│
+├── schema/
+│   ├── domains.schema.ts           ✅ Exists
+│   ├── routines.schema.ts          ✅ Exists
+│   ├── tasks.schema.ts             ✅ Exists (add timer fields)
+│   ├── projects.schema.ts          ✅ Exists (add dependencies)
+│   ├── media.schema.ts             🆕 Create
+│   ├── preferences.schema.ts       🆕 Create
+│   └── calendar.schema.ts          🆕 Create
+│
+└── components/
+    ├── calendar/                   🆕 Create
+    │   ├── calendar-view.tsx       # Main calendar wrapper
+    │   ├── week-view.tsx           # Week grid
+    │   ├── month-view.tsx          # Month grid
+    │   ├── day-view.tsx            # Day timeline (reuse existing)
+    │   ├── calendar-event.tsx      # Single event display
+    │   ├── calendar-sidebar.tsx    # Filters + mini-calendar
+    │   ├── calendar-header.tsx     # Navigation + view toggle
+    │   └── event-modal.tsx         # Create/edit modal
+    │
+    ├── domains/                    ✅ Exists (move to settings)
+    │
+    ├── routines/                   ✅ Exists
+    │   └── task-linking-modal.tsx  🆕 Create
+    │
+    ├── tasks/                      ✅ Exists
+    │   └── task-timer.tsx          🆕 Create
+    │
+    ├── projects/                   🆕 Create
+    │   ├── project-card.tsx
+    │   ├── project-form.tsx
+    │   ├── projects-list.tsx
+    │   └── project-gantt.tsx       # Kibo-UI Gantt wrapper
+    │
+    ├── media/                      🆕 Create
+    │   ├── media-uploader.tsx
+    │   ├── media-gallery.tsx
+    │   └── media-preview.tsx
+    │
+    └── statistics/                 🆕 Create
+        ├── stats-overview.tsx
+        ├── domain-time-chart.tsx
+        ├── completion-chart.tsx
+        └── streaks-list.tsx
 ```
 
 ---
 
-## 5. Dependencies
+## 4. Component Mapping
 
--   `next`: Core framework
--   `react`, `react-dom`: UI library
--   `@supabase/ssr`, `@supabase/supabase-js`: Supabase integration
--   `shadcn-ui`, `class-variance-authority`, `clsx`, `lucide-react`, `tailwind-merge`, `tailwindcss-animate`: UI and styling
--   `zod`: Schema validation
--   `recharts`: For data visualization on the statistics page
--   `@next/third-parties`: For Google Calendar integration
+### 4.1 Kibo-UI Components to Install
+
+| Component | Usage |
+|-----------|-------|
+| `@kibo-ui/calendar` | Month view base |
+| `@kibo-ui/mini-calendar` | Sidebar date picker |
+| `@kibo-ui/gantt` | Project timeline |
+
+### 4.2 Existing Shadcn Components (Already Installed)
+
+- Dialog, Sheet, Popover
+- Button, Input, Select, Checkbox
+- Card, Badge, Avatar
+- Calendar (date picker)
+- Form components
+
+---
+
+## 5. Key Algorithms
+
+### 5.1 Routine Instance Generation
+
+```typescript
+// Called when:
+// 1. Routine template created/updated
+// 2. User navigates to future date without instances
+// 3. Daily cron job (optional)
+
+async function generateRoutineInstances(
+  templateId: string,
+  fromDate: Date,
+  toDate: Date // typically fromDate + 14 days
+): Promise<RoutineInstance[]> {
+  const template = await getRoutineTemplate(templateId);
+  const existingInstances = await getInstancesInRange(templateId, fromDate, toDate);
+  
+  // Parse RRULE to get occurrence dates
+  const rule = RRule.fromString(template.recurrence_rule);
+  const occurrences = rule.between(fromDate, toDate, true);
+  
+  const newInstances: RoutineInstance[] = [];
+  
+  for (const date of occurrences) {
+    // Skip if instance already exists
+    if (existingInstances.some(i => isSameDay(i.scheduled_date, date))) {
+      continue;
+    }
+    
+    // Create instance with preferred time from constraints
+    newInstances.push({
+      template_id: templateId,
+      user_id: template.user_id,
+      scheduled_date: date,
+      scheduled_start: template.constraints.preferred_start,
+      scheduled_end: calculateEndTime(template.constraints),
+      status: 'pending'
+    });
+  }
+  
+  return await batchInsertInstances(newInstances);
+}
+```
+
+### 5.2 Calendar Data Aggregation
+
+```typescript
+// Fetch all items for a date range (for calendar display)
+
+async function getCalendarEvents(
+  userId: string,
+  startDate: Date,
+  endDate: Date,
+  filters: CalendarFilters
+): Promise<CalendarEvent[]> {
+  const events: CalendarEvent[] = [];
+  
+  // 1. Routine Instances
+  if (filters.showRoutines) {
+    const instances = await getRoutineInstancesInRange(userId, startDate, endDate);
+    const filteredByDomain = filterByDomains(instances, filters.hiddenDomainIds);
+    events.push(...mapToCalendarEvents(filteredByDomain, 'routine'));
+  }
+  
+  // 2. Tasks with due date
+  if (filters.showTasks) {
+    const tasks = await getTasksInRange(userId, startDate, endDate);
+    const filteredByDomain = filterByDomains(tasks, filters.hiddenDomainIds);
+    events.push(...mapToCalendarEvents(filteredByDomain, 'task'));
+  }
+  
+  return events.sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+```
+
+### 5.3 Conflict Detection
+
+```typescript
+// Detect overlapping events
+
+function detectConflicts(events: CalendarEvent[]): Conflict[] {
+  const conflicts: Conflict[] = [];
+  
+  // Sort by start time
+  const sorted = events.sort((a, b) => a.start.getTime() - b.start.getTime());
+  
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const current = sorted[i];
+    const next = sorted[i + 1];
+    
+    // Check if they overlap
+    if (current.end > next.start) {
+      conflicts.push({
+        event1: current,
+        event2: next,
+        overlapMinutes: (current.end.getTime() - next.start.getTime()) / 60000
+      });
+    }
+  }
+  
+  return conflicts;
+}
+```
+
+---
+
+## 6. API Layer (Server Actions)
+
+### 6.1 New Actions
+
+```typescript
+// Calendar
+getCalendarEvents(startDate, endDate, filters): CalendarEvent[]
+saveCalendarPreferences(preferences): void
+
+// Timer
+startTaskTimer(taskId): Task
+pauseTaskTimer(taskId): Task
+stopTaskTimer(taskId): Task
+
+// Media
+uploadTrackingMedia(entityType, entityId, file): Media
+deleteTrackingMedia(mediaId): void
+getMediaForEntity(entityType, entityId): Media[]
+
+// Projects
+getProjects(): Project[]
+getProject(id): Project & { tasks: Task[], dependencies: Dependency[] }
+createProject(input): Project
+updateProject(input): Project
+archiveProject(id): void
+
+// Dependencies (Gantt)
+createTaskDependency(predecessorId, successorId, type): Dependency
+deleteTaskDependency(dependencyId): void
+
+// Preferences
+getUserPreferences(): UserPreferences
+updateUserPreferences(input): UserPreferences
+```
+
+---
+
+## 7. Storage Configuration
+
+### 7.1 Supabase Storage Bucket
+
+```sql
+-- Create bucket for tracking media
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('lifeos-media', 'lifeos-media', false);
+
+-- RLS Policy
+CREATE POLICY "Users can manage own media files"
+ON storage.objects FOR ALL
+USING (
+  bucket_id = 'lifeos-media' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+```
+
+### 7.2 File Path Convention
+
+```
+lifeos-media/
+└── {user_id}/
+    ├── routine-instances/
+    │   └── {instance_id}/
+    │       ├── photo_1.jpg
+    │       └── video_1.mp4
+    └── tasks/
+        └── {task_id}/
+            └── document_1.pdf
+```
+
+---
+
+## 8. Migration Strategy
+
+### 8.1 Order of Operations
+
+1. Create new migration file: `20251206000000_lifeos_planning_v2.sql`
+2. Run migration: `supabase db push`
+3. Regenerate types: `supabase gen types typescript --local > src/lib/supabase/database.types.ts`
+4. Create storage bucket
+5. Update schemas and services
+6. Implement new components
+
+### 8.2 Backward Compatibility
+
+- Existing data preserved
+- AI planning tables kept (suspended, not deleted)
+- Old timeline view becomes "Day View"
+- Existing tracking still works
+
+---
+
+## 9. Dependencies to Add
+
+```json
+{
+  "dependencies": {
+    "rrule": "^2.8.1",
+    "date-fns": "^3.6.0"
+  }
+}
+```
+
+Note: `date-fns` and `jotai` will be added by Kibo-UI calendar installation.
