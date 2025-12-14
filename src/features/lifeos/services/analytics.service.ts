@@ -137,7 +137,8 @@ export const analyticsService = {
           id,
           status,
           scheduled_date,
-          time_spent_minutes,
+          actual_start,
+          actual_end,
           template:lifeos_routine_templates!template_id(
             id,
             name,
@@ -159,15 +160,15 @@ export const analyticsService = {
         .select(`
           id,
           status,
-          completed_at,
+          updated_at,
           timer_accumulated_seconds,
           domain_id,
           domain:lifeos_domains(id, name, color)
         `)
         .eq('user_id', userId)
         .eq('status', 'done')
-        .gte('completed_at', weekStart)
-        .lte('completed_at', weekEnd);
+        .gte('updated_at', weekStart)
+        .lte('updated_at', weekEnd);
 
       if (tasksError) {
         return { data: null, error: tasksError.message };
@@ -185,7 +186,14 @@ export const analyticsService = {
 
       // Time from routine instances + task timers
       const routineTimeMinutes = routineInstances.reduce(
-        (sum, i) => sum + (i.time_spent_minutes ?? 0), 
+        (sum, i) => {
+          if (i.actual_start && i.actual_end) {
+            const start = new Date(i.actual_start).getTime();
+            const end = new Date(i.actual_end).getTime();
+            return sum + Math.floor((end - start) / 60000);
+          }
+          return sum;
+        }, 
         0
       );
       const taskTimeMinutes = completedTasks.reduce(
@@ -220,7 +228,12 @@ export const analyticsService = {
         const stats = domainMap.get(domainId)!;
         stats.routinesTotal++;
         if (instance.status === 'completed') stats.routinesCompleted++;
-        stats.timeMinutes += instance.time_spent_minutes ?? 0;
+        // Calculate time from actual_start/actual_end
+        if (instance.actual_start && instance.actual_end) {
+          const start = new Date(instance.actual_start).getTime();
+          const end = new Date(instance.actual_end).getTime();
+          stats.timeMinutes += Math.floor((end - start) / 60000);
+        }
       }
 
       for (const task of completedTasks) {
@@ -270,12 +283,17 @@ export const analyticsService = {
         if (stats) {
           stats.routinesTotal++;
           if (instance.status === 'completed') stats.routinesCompleted++;
-          stats.timeMinutes += instance.time_spent_minutes ?? 0;
+          // Calculate time from actual_start/actual_end
+          if (instance.actual_start && instance.actual_end) {
+            const start = new Date(instance.actual_start).getTime();
+            const end = new Date(instance.actual_end).getTime();
+            stats.timeMinutes += Math.floor((end - start) / 60000);
+          }
         }
       }
 
       for (const task of completedTasks) {
-        const dateStr = task.completed_at?.split('T')[0];
+        const dateStr = task.updated_at?.split('T')[0];
         if (dateStr) {
           const stats = dayMap.get(dateStr);
           if (stats) {

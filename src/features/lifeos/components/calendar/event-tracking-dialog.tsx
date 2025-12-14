@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -234,13 +233,13 @@ export function EventTrackingDialog({
             />
             <div className="flex-1">
               <DialogTitle className="text-lg">{event.title}</DialogTitle>
-              <DialogDescription className="flex items-center gap-2 mt-1">
+              <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                 <Clock className="h-3 w-3" />
                 {formatTime(event.start)} - {formatTime(event.end)}
                 <Badge variant="outline" className="ml-2">
                   {isRoutine ? 'Routine' : 'Tâche'}
                 </Badge>
-              </DialogDescription>
+              </div>
             </div>
           </div>
         </DialogHeader>

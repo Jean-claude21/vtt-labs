@@ -6,7 +6,7 @@
  * 
  * @module lifeos/components/calendar
  */
-/* eslint-disable jsx-a11y/no-static-element-interactions */
+/* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-tabindex */
 'use client';
 
 import * as React from 'react';
@@ -19,6 +19,7 @@ import {
   Calendar as CalendarIcon,
   List,
   Grid3X3,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, CalendarView } from '@/features/lifeos/schema/calendar.schema';
@@ -32,6 +33,7 @@ interface CalendarViewProps {
   onDateChange?: (date: Date) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }
 
 export function CalendarViewComponent({
@@ -41,6 +43,7 @@ export function CalendarViewComponent({
   onDateChange,
   draggedTask,
   onTaskDrop,
+  onSlotClick,
 }: Readonly<CalendarViewProps>) {
   const [currentDate, setCurrentDate] = React.useState(new Date());
   const [view, setView] = React.useState<CalendarView>(initialView);
@@ -168,6 +171,7 @@ export function CalendarViewComponent({
             onEventClick={onEventClick}
             draggedTask={draggedTask}
             onTaskDrop={onTaskDrop}
+            onSlotClick={onSlotClick}
           />
         )}
         {view === 'week' && (
@@ -177,6 +181,7 @@ export function CalendarViewComponent({
             onEventClick={onEventClick}
             draggedTask={draggedTask}
             onTaskDrop={onTaskDrop}
+            onSlotClick={onSlotClick}
           />
         )}
         {view === 'month' && (
@@ -185,6 +190,7 @@ export function CalendarViewComponent({
             year={currentDate.getFullYear()}
             events={events}
             onEventClick={onEventClick}
+            onSlotClick={onSlotClick}
           />
         )}
       </CardContent>
@@ -215,68 +221,116 @@ function DayView({
   onEventClick,
   draggedTask,
   onTaskDrop,
+  onSlotClick,
 }: Readonly<{
   date: Date;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }>) {
   // Generate time slots from 00:00 to 23:00
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const dateStr = date.toISOString().split('T')[0];
+  const [dragOverHour, setDragOverHour] = React.useState<number | null>(null);
 
-  const handleDragOver = React.useCallback((e: React.DragEvent) => {
+  const handleDragOver = React.useCallback((e: React.DragEvent, hour: number) => {
     if (draggedTask) {
       e.preventDefault();
-      e.currentTarget.classList.add('bg-primary/10');
+      setDragOverHour(hour);
     }
   }, [draggedTask]);
 
-  const handleDragLeave = React.useCallback((e: React.DragEvent) => {
-    e.currentTarget.classList.remove('bg-primary/10');
+  const handleDragLeave = React.useCallback(() => {
+    setDragOverHour(null);
   }, []);
 
   const handleDrop = React.useCallback((e: React.DragEvent, hour: number) => {
     e.preventDefault();
-    e.currentTarget.classList.remove('bg-primary/10');
+    setDragOverHour(null);
     if (draggedTask && onTaskDrop) {
       const time = `${String(hour).padStart(2, '0')}:00`;
       onTaskDrop(draggedTask, dateStr, time);
     }
   }, [draggedTask, onTaskDrop, dateStr]);
 
+  const handleSlotClick = React.useCallback((hour: number) => {
+    if (onSlotClick) {
+      const time = `${String(hour).padStart(2, '0')}:00`;
+      onSlotClick(dateStr, time);
+    }
+  }, [onSlotClick, dateStr]);
+
+  // Group events by hour for overlap handling
+  const getEventsForHour = (hour: number) => {
+    return events.filter((event) => event.start.getHours() === hour);
+  };
+
   return (
     <div className="relative">
       {/* Time grid */}
       <div className="border-l">
-        {hours.map((hour) => (
-          <div key={hour} className="flex border-b min-h-[60px]">
-            <div className="w-16 py-1 px-2 text-xs text-muted-foreground text-right border-r">
-              {String(hour).padStart(2, '0')}:00
+        {hours.map((hour) => {
+          const hourEvents = getEventsForHour(hour);
+          const isDragOver = dragOverHour === hour;
+          
+          return (
+            <div key={hour} className="flex border-b min-h-[70px]">
+              <div className="w-16 py-1 px-2 text-xs text-muted-foreground text-right border-r flex-shrink-0">
+                {String(hour).padStart(2, '0')}:00
+              </div>
+              <div 
+                tabIndex={0}
+                aria-label={`Créneau ${String(hour).padStart(2, '0')}:00`}
+                className={cn(
+                  "flex-1 relative transition-all duration-200 group",
+                  draggedTask && "cursor-pointer",
+                  isDragOver && "bg-primary/20 ring-2 ring-primary ring-inset"
+                )}
+                onDragOver={(e) => handleDragOver(e, hour)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, hour)}
+                onClick={() => handleSlotClick(hour)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(hour)}
+              >
+                {/* Drop indicator */}
+                {isDragOver && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="flex items-center gap-2 text-primary font-medium text-sm bg-background/80 px-3 py-1 rounded-full shadow-sm">
+                      <Plus className="h-4 w-4" />
+                      Déposer ici
+                    </div>
+                  </div>
+                )}
+                {/* Hover add button */}
+                {!draggedTask && onSlotClick && hourEvents.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                      <Plus className="h-3 w-3" />
+                      Ajouter
+                    </div>
+                  </div>
+                )}
+                {/* Events for this hour - handle overlaps */}
+                <div className="flex gap-1">
+                  {hourEvents.map((event, index) => (
+                    <EventBlock
+                      key={event.id}
+                      event={event}
+                      onClick={() => onEventClick?.(event)}
+                      style={{ 
+                        position: 'relative',
+                        flex: 1,
+                        maxWidth: hourEvents.length > 1 ? `${100 / hourEvents.length}%` : undefined 
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-            <div 
-              className={cn(
-                "flex-1 relative transition-colors",
-                draggedTask && "hover:bg-primary/5"
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, hour)}
-            >
-              {/* Events for this hour */}
-              {events
-                .filter((event) => event.start.getHours() === hour)
-                .map((event) => (
-                  <EventBlock
-                    key={event.id}
-                    event={event}
-                    onClick={() => onEventClick?.(event)}
-                  />
-                ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -289,12 +343,14 @@ function WeekView({
   onEventClick,
   draggedTask,
   onTaskDrop,
+  onSlotClick,
 }: Readonly<{
   startDate: Date;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }>) {
   // Generate days of the week
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -340,7 +396,7 @@ function WeekView({
       {/* Time grid */}
       <div className="flex-1 overflow-auto">
         {hours.map((hour) => (
-          <div key={hour} className="flex border-b min-h-[50px]">
+          <div key={hour} className="flex border-b min-h-[60px]">
             <div className="w-16 py-1 px-2 text-xs text-muted-foreground text-right border-r flex-shrink-0">
               {String(hour).padStart(2, '0')}:00
             </div>
@@ -353,6 +409,7 @@ function WeekView({
                 onEventClick={onEventClick}
                 draggedTask={draggedTask}
                 onTaskDrop={onTaskDrop}
+                onSlotClick={onSlotClick}
               />
             ))}
           </div>
@@ -370,6 +427,7 @@ function WeekDayCell({
   onEventClick,
   draggedTask,
   onTaskDrop,
+  onSlotClick,
 }: Readonly<{
   day: Date;
   hour: number;
@@ -377,8 +435,10 @@ function WeekDayCell({
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }>) {
   const dayStr = day.toISOString().split('T')[0];
+  const [isDragOver, setIsDragOver] = React.useState(false);
   
   const dayEvents = events.filter((event) => {
     const eventDate = event.start.toISOString().split('T')[0];
@@ -388,41 +448,74 @@ function WeekDayCell({
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     if (draggedTask) {
       e.preventDefault();
-      e.currentTarget.classList.add('bg-primary/20');
+      setIsDragOver(true);
     }
   }, [draggedTask]);
 
-  const handleDragLeave = React.useCallback((e: React.DragEvent) => {
-    e.currentTarget.classList.remove('bg-primary/20');
+  const handleDragLeave = React.useCallback(() => {
+    setIsDragOver(false);
   }, []);
 
   const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.classList.remove('bg-primary/20');
+    setIsDragOver(false);
     if (draggedTask && onTaskDrop) {
       const time = `${String(hour).padStart(2, '0')}:00`;
       onTaskDrop(draggedTask, dayStr, time);
     }
   }, [draggedTask, onTaskDrop, dayStr, hour]);
 
+  const handleClick = React.useCallback(() => {
+    if (onSlotClick && dayEvents.length === 0) {
+      const time = `${String(hour).padStart(2, '0')}:00`;
+      onSlotClick(dayStr, time);
+    }
+  }, [onSlotClick, dayStr, hour, dayEvents.length]);
+
   return (
     <div 
+      tabIndex={0}
+      aria-label={`Créneau ${dayStr} ${String(hour).padStart(2, '0')}:00`}
       className={cn(
-        "flex-1 border-r relative transition-colors",
-        draggedTask && "hover:bg-primary/5 cursor-pointer"
+        "flex-1 border-r relative transition-all duration-200 group",
+        draggedTask && "cursor-pointer",
+        isDragOver && "bg-primary/20 ring-2 ring-primary ring-inset",
+        !draggedTask && onSlotClick && dayEvents.length === 0 && "hover:bg-muted/50 cursor-pointer"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={handleClick}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
     >
-      {dayEvents.map((event) => (
-        <EventBlock
-          key={event.id}
-          event={event}
-          compact
-          onClick={() => onEventClick?.(event)}
-        />
-      ))}
+      {/* Drop indicator */}
+      {isDragOver && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <Plus className="h-4 w-4 text-primary" />
+        </div>
+      )}
+      {/* Hover add indicator */}
+      {!draggedTask && onSlotClick && dayEvents.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <Plus className="h-3 w-3 text-muted-foreground" />
+        </div>
+      )}
+      {/* Events - handle overlaps */}
+      <div className="flex gap-0.5 h-full">
+        {dayEvents.map((event) => (
+          <EventBlock
+            key={event.id}
+            event={event}
+            compact
+            onClick={() => onEventClick?.(event)}
+            style={{
+              position: 'relative',
+              flex: 1,
+              maxWidth: dayEvents.length > 1 ? `${100 / dayEvents.length}%` : undefined
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -433,11 +526,13 @@ function MonthView({
   year,
   events,
   onEventClick,
+  onSlotClick,
 }: Readonly<{
   month: number;
   year: number;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }>) {
   // Get first day of month and number of days
   const firstDay = new Date(year, month, 1);
@@ -475,7 +570,7 @@ function MonthView({
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((day, index) => {
           if (day === null) {
-            return <div key={`empty-before-day-${startDayOfWeek - index}`} className="min-h-[80px]" />;
+            return <div key={`empty-before-day-${startDayOfWeek - index}`} className="min-h-[100px]" />;
           }
 
           const dayDate = new Date(year, month, day);
@@ -486,14 +581,17 @@ function MonthView({
           });
 
           const isToday = dayDate.toDateString() === new Date().toDateString();
+          const dateStr = dayDate.toISOString().split('T')[0];
 
           return (
             <MonthDayCell
               key={`day-${day}`}
               day={day}
+              dateStr={dateStr}
               isToday={isToday}
               events={dayEvents}
               onEventClick={onEventClick}
+              onSlotClick={onSlotClick}
             />
           );
         })}
@@ -505,29 +603,51 @@ function MonthView({
 // Month Day Cell Component - Extracted to avoid deep nesting
 function MonthDayCell({
   day,
+  dateStr,
   isToday,
   events,
   onEventClick,
+  onSlotClick,
 }: Readonly<{
   day: number;
+  dateStr: string;
   isToday: boolean;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
+  onSlotClick?: (date: string, time: string) => void;
 }>) {
+  const handleDayClick = React.useCallback((e: React.MouseEvent) => {
+    // Don't trigger if clicking on an event
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (onSlotClick) {
+      onSlotClick(dateStr, '09:00'); // Default to 9 AM
+    }
+  }, [onSlotClick, dateStr]);
+
   return (
     <div
+      tabIndex={0}
+      aria-label={`Jour ${day}`}
       className={cn(
-        'min-h-[80px] border rounded-lg p-1',
-        isToday && 'bg-primary/5 border-primary'
+        'min-h-[100px] border rounded-lg p-1 transition-colors group',
+        isToday && 'bg-primary/5 border-primary',
+        onSlotClick && 'hover:bg-muted/50 cursor-pointer'
       )}
+      onClick={handleDayClick}
+      onKeyDown={(e) => e.key === 'Enter' && onSlotClick?.(dateStr, '09:00')}
     >
-      <div
-        className={cn(
-          'text-sm font-medium mb-1',
-          isToday && 'text-primary'
+      <div className="flex items-center justify-between mb-1">
+        <span
+          className={cn(
+            'text-sm font-medium',
+            isToday && 'text-primary'
+          )}
+        >
+          {day}
+        </span>
+        {onSlotClick && (
+          <Plus className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
-      >
-        {day}
       </div>
       <div className="space-y-1">
         {events.slice(0, 3).map((event) => (
@@ -536,7 +656,10 @@ function MonthDayCell({
             type="button"
             className="text-xs truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80 w-full text-left"
             style={{ backgroundColor: event.color || '#6B7280', color: 'white' }}
-            onClick={() => onEventClick?.(event)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEventClick?.(event);
+            }}
             title={event.title}
           >
             {event.title}
@@ -557,24 +680,37 @@ function EventBlock({
   event,
   compact = false,
   onClick,
+  style,
 }: Readonly<{
   event: CalendarEvent;
   compact?: boolean;
   onClick?: () => void;
+  style?: React.CSSProperties;
 }>) {
+  // Calculate top position - avoid nested ternary
+  let topPosition: number | undefined;
+  if (!style) {
+    topPosition = compact ? 2 : 4;
+  }
+  
   return (
     <button
       type="button"
       className={cn(
-        'absolute left-1 right-1 rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden text-left',
-        compact ? 'text-xs' : 'text-sm'
+        'rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden text-left',
+        compact ? 'text-xs' : 'text-sm',
+        !style && 'absolute left-1 right-1'
       )}
       style={{
         backgroundColor: event.color || '#6B7280',
         color: 'white',
-        top: compact ? 2 : 4,
+        top: topPosition,
+        ...style,
       }}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
     >
       <div className="flex items-center gap-1">
         {event.icon && <span>{event.icon}</span>}

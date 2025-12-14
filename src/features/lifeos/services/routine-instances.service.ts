@@ -279,7 +279,6 @@ export const routineInstanceService = {
       .from('lifeos_routine_instances')
       .update({
         status: input.status ?? 'completed',
-        completed_at: new Date().toISOString(),
         actual_value: input.actual_value ?? null,
         completion_score: completionScore,
         mood_before: input.mood_before ?? null,
@@ -325,7 +324,6 @@ export const routineInstanceService = {
       .from('lifeos_routine_instances')
       .update({
         status: 'skipped',
-        completed_at: new Date().toISOString(),
         notes: reason ?? null,
         completion_score: 0,
       })

@@ -13,8 +13,9 @@ import { useState, useTransition, useCallback, useMemo, useEffect } from 'react'
 import { toast } from 'sonner';
 import { CalendarViewComponent } from '@/features/lifeos/components/calendar/calendar-view';
 import { EventTrackingDialog } from '@/features/lifeos/components/calendar/event-tracking-dialog';
+import { TaskForm } from '@/features/lifeos/components/tasks/task-form';
 import { getCalendarEvents } from '@/features/lifeos/actions/calendar.actions';
-import { getUnscheduledTasks, scheduleTask } from '@/features/lifeos/actions/tasks.actions';
+import { getUnscheduledTasks, scheduleTask, createTask } from '@/features/lifeos/actions/tasks.actions';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -100,6 +101,11 @@ export function CalendarDashboard({
   // Event tracking dialog state
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  
+  // Quick task creation dialog state
+  const [quickTaskDialogOpen, setQuickTaskDialogOpen] = useState(false);
+  const [quickTaskSlot, setQuickTaskSlot] = useState<{ date: string; time: string } | null>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
   
   // Filters state
   const [filters, setFilters] = useState<CalendarFilters>({
@@ -219,6 +225,49 @@ export function CalendarDashboard({
     refreshUnscheduledTasks();
   }, [selectedDate, loadEventsForDate, refreshUnscheduledTasks]);
 
+  // Handle slot click - opens quick task creation dialog
+  const handleSlotClick = useCallback((date: string, time: string) => {
+    setQuickTaskSlot({ date, time });
+    setQuickTaskDialogOpen(true);
+  }, []);
+
+  // Handle quick task creation
+  const handleQuickTaskSubmit = useCallback(async (data: {
+    title: string;
+    description?: string;
+    domain_id?: string | null;
+    project_id?: string | null;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    estimated_minutes?: number | null;
+    deadline?: string | null;
+  }) => {
+    if (!quickTaskSlot) return;
+    
+    setIsCreatingTask(true);
+    
+    // Create the task
+    const result = await createTask({
+      ...data,
+      scheduled_date: quickTaskSlot.date,
+      scheduled_time: quickTaskSlot.time,
+    });
+    
+    setIsCreatingTask(false);
+    
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+    
+    toast.success('Tâche créée', { 
+      description: `"${data.title}" ajoutée au calendrier` 
+    });
+    
+    setQuickTaskDialogOpen(false);
+    setQuickTaskSlot(null);
+    loadEventsForDate(selectedDate);
+  }, [quickTaskSlot, selectedDate, loadEventsForDate]);
+
   // Toggle domain visibility
   const toggleDomain = useCallback((domainId: string) => {
     setFilters(prev => ({
@@ -256,6 +305,7 @@ export function CalendarDashboard({
               selected={selectedDate}
               onSelect={handleDateSelect}
               className="rounded-md"
+              weekStartsOn={1}
               modifiers={{
                 hasEvents: (date) => datesWithEvents.has(date.toISOString().split('T')[0]),
               }}
@@ -271,9 +321,9 @@ export function CalendarDashboard({
         </Card>
 
         {/* Tabbed content: Unscheduled Tasks / Filters */}
-        <Card className="flex-1 overflow-hidden">
-          <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="h-full flex flex-col">
-            <TabsList className="w-full grid grid-cols-2 rounded-none border-b">
+        <Card className="flex-1 min-h-[300px] flex flex-col overflow-hidden">
+          <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <TabsList className="w-full grid grid-cols-2 rounded-none border-b shrink-0">
               <TabsTrigger value="tasks" className="gap-2">
                 <ListTodo className="h-4 w-4" />
                 À planifier
@@ -290,8 +340,8 @@ export function CalendarDashboard({
             </TabsList>
             
             {/* Unscheduled Tasks Tab */}
-            <TabsContent value="tasks" className="flex-1 m-0 overflow-hidden">
-              <ScrollArea className="h-full">
+            <TabsContent value="tasks" className="flex-1 m-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+              <ScrollArea className="flex-1">
                 <div className="p-4 space-y-2">
                   {unscheduledTasks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -374,8 +424,8 @@ export function CalendarDashboard({
             </TabsContent>
             
             {/* Filters Tab */}
-            <TabsContent value="filters" className="flex-1 m-0 overflow-hidden">
-              <ScrollArea className="h-full">
+            <TabsContent value="filters" className="flex-1 m-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+              <ScrollArea className="flex-1">
                 <div className="p-4 space-y-4">
                   {/* Type filters */}
                   <div className="space-y-3">
@@ -566,6 +616,7 @@ export function CalendarDashboard({
           onDateChange={handleDateChange}
           draggedTask={draggedTask}
           onTaskDrop={handleTaskDrop}
+          onSlotClick={handleSlotClick}
         />
       </div>
 
@@ -575,6 +626,18 @@ export function CalendarDashboard({
         open={trackingDialogOpen}
         onOpenChange={setTrackingDialogOpen}
         onEventUpdated={handleTrackingComplete}
+      />
+
+      {/* Quick Task Creation Dialog */}
+      <TaskForm
+        open={quickTaskDialogOpen}
+        onOpenChange={(open) => {
+          setQuickTaskDialogOpen(open);
+          if (!open) setQuickTaskSlot(null);
+        }}
+        domains={domains}
+        onSubmit={handleQuickTaskSubmit}
+        isSubmitting={isCreatingTask}
       />
     </div>
   );

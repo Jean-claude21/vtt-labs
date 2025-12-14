@@ -209,13 +209,7 @@ export const taskService = {
     // Prepare update data
     const updateData: Record<string, unknown> = { status: newStatus };
 
-    // Set completion date if done
-    if (newStatus === 'done') {
-      updateData.completed_at = new Date().toISOString();
-    } else if (currentStatus === 'done') {
-      // Reopening - clear completion date
-      updateData.completed_at = null;
-    }
+    // Note: updated_at is automatically set by the trigger
 
     const { data, error } = await client
       .from('lifeos_tasks')
