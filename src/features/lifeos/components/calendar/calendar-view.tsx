@@ -33,7 +33,7 @@ interface CalendarViewProps {
   onDateChange?: (date: Date) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }
 
 export function CalendarViewComponent({
@@ -228,7 +228,7 @@ function DayView({
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }>) {
   // Generate time slots from 00:00 to 23:00
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -255,10 +255,10 @@ function DayView({
     }
   }, [draggedTask, onTaskDrop, dateStr]);
 
-  const handleSlotClick = React.useCallback((hour: number) => {
+  const handleSlotClick = React.useCallback((hour: number, mouseEvent?: React.MouseEvent) => {
     if (onSlotClick) {
       const time = `${String(hour).padStart(2, '0')}:00`;
-      onSlotClick(dateStr, time);
+      onSlotClick(dateStr, time, mouseEvent);
     }
   }, [onSlotClick, dateStr]);
 
@@ -291,7 +291,7 @@ function DayView({
                 onDragOver={(e) => handleDragOver(e, hour)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, hour)}
-                onClick={() => handleSlotClick(hour)}
+                onClick={(e) => handleSlotClick(hour, e)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(hour)}
               >
                 {/* Drop indicator */}
@@ -350,7 +350,7 @@ function WeekView({
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }>) {
   // Generate days of the week
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -435,7 +435,7 @@ function WeekDayCell({
   onEventClick?: (event: CalendarEvent) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }>) {
   const dayStr = day.toISOString().split('T')[0];
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -465,10 +465,10 @@ function WeekDayCell({
     }
   }, [draggedTask, onTaskDrop, dayStr, hour]);
 
-  const handleClick = React.useCallback(() => {
+  const handleClick = React.useCallback((e?: React.MouseEvent) => {
     if (onSlotClick && dayEvents.length === 0) {
       const time = `${String(hour).padStart(2, '0')}:00`;
-      onSlotClick(dayStr, time);
+      onSlotClick(dayStr, time, e);
     }
   }, [onSlotClick, dayStr, hour, dayEvents.length]);
 
@@ -485,7 +485,7 @@ function WeekDayCell({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={handleClick}
+      onClick={(e) => handleClick(e)}
       onKeyDown={(e) => e.key === 'Enter' && handleClick()}
     >
       {/* Drop indicator */}
@@ -532,7 +532,7 @@ function MonthView({
   year: number;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }>) {
   // Get first day of month and number of days
   const firstDay = new Date(year, month, 1);
@@ -614,13 +614,13 @@ function MonthDayCell({
   isToday: boolean;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
-  onSlotClick?: (date: string, time: string) => void;
+  onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
 }>) {
   const handleDayClick = React.useCallback((e: React.MouseEvent) => {
     // Don't trigger if clicking on an event
     if ((e.target as HTMLElement).closest('button')) return;
     if (onSlotClick) {
-      onSlotClick(dateStr, '09:00'); // Default to 9 AM
+      onSlotClick(dateStr, '09:00', e); // Default to 9 AM, pass event
     }
   }, [onSlotClick, dateStr]);
 
@@ -679,11 +679,13 @@ function MonthDayCell({
 function EventBlock({
   event,
   compact = false,
+  showTime = true,
   onClick,
   style,
 }: Readonly<{
   event: CalendarEvent;
   compact?: boolean;
+  showTime?: boolean; // Show time even in compact mode (false for month view)
   onClick?: () => void;
   style?: React.CSSProperties;
 }>) {
@@ -692,6 +694,11 @@ function EventBlock({
   if (!style) {
     topPosition = compact ? 2 : 4;
   }
+  
+  // Format time string - guard against null dates
+  const timeString = event.start && event.end 
+    ? `${event.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - ${event.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
   
   return (
     <button
@@ -716,14 +723,14 @@ function EventBlock({
         {event.icon && <span>{event.icon}</span>}
         <span className="font-medium truncate">{event.title}</span>
       </div>
-      {!compact && (
-        <div className="flex items-center gap-2 text-xs opacity-80">
-          <span>
-            {event.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-            {' - '}
-            {event.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {event.isCompleted && <Badge variant="outline" className="text-white border-white/50">✓</Badge>}
+      {/* Show time in compact mode if showTime=true, always show in non-compact */}
+      {(showTime || !compact) && (
+        <div className={cn(
+          "flex items-center gap-2 opacity-80",
+          compact ? "text-[10px]" : "text-xs"
+        )}>
+          <span className="truncate">{timeString}</span>
+          {event.isCompleted && !compact && <Badge variant="outline" className="text-white border-white/50">✓</Badge>}
         </div>
       )}
     </button>

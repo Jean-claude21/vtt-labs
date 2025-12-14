@@ -116,7 +116,7 @@ export async function updateTask(
 }
 
 /**
- * Complete a task (shortcut for updateTaskStatus with 'completed')
+ * Complete a task (shortcut for updateTaskStatus with 'done')
  */
 export async function completeTask(
   taskId: string
@@ -132,7 +132,7 @@ export async function completeTask(
     return { data: null, error: 'ID de tâche requis' };
   }
 
-  const result = await taskService.complete(supabase, user.id, taskId);
+  const result = await taskService.updateStatus(supabase, user.id, taskId, 'done');
   return result;
 }
 

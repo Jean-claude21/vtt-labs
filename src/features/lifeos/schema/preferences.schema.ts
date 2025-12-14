@@ -63,6 +63,10 @@ export const userPreferencesSchema = z.object({
     night: { start: '21:00', end: '23:59' },
   }),
   
+  // Auto-positioning settings
+  auto_position_routines: z.boolean().default(true), // Use constraints/category_moment to auto-position
+  auto_position_tasks: z.boolean().default(false),   // Tasks stay in "to plan" by default
+  
   // Planning
   routine_generation_horizon_days: z.number().int().min(7).max(90).default(14),
   
@@ -87,6 +91,8 @@ export const updatePreferencesSchema = z.object({
   show_external_events: z.boolean().optional(),
   hidden_domain_ids: z.array(z.string().uuid()).optional(),
   time_blocks: timeBlocksSchema.partial().optional(),
+  auto_position_routines: z.boolean().optional(),
+  auto_position_tasks: z.boolean().optional(),
   routine_generation_horizon_days: z.number().int().min(7).max(90).optional(),
   preferences: z.record(z.string(), z.unknown()).optional(),
 });

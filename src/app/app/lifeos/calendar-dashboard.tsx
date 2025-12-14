@@ -34,6 +34,10 @@ import {
   CalendarDays,
   AlertCircle,
   Menu,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Repeat,
 } from 'lucide-react';
 import {
   Sheet,
@@ -97,6 +101,7 @@ export function CalendarDashboard({
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [sidebarTab, setSidebarTab] = useState<string>('tasks');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [miniCalendarCollapsed, setMiniCalendarCollapsed] = useState(false);
   
   // Event tracking dialog state
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -106,6 +111,15 @@ export function CalendarDashboard({
   const [quickTaskDialogOpen, setQuickTaskDialogOpen] = useState(false);
   const [quickTaskSlot, setQuickTaskSlot] = useState<{ date: string; time: string } | null>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  
+  // Context menu state for slot click
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    date: string;
+    time: string;
+  } | null>(null);
   
   // Filters state
   const [filters, setFilters] = useState<CalendarFilters>({
@@ -225,11 +239,52 @@ export function CalendarDashboard({
     refreshUnscheduledTasks();
   }, [selectedDate, loadEventsForDate, refreshUnscheduledTasks]);
 
-  // Handle slot click - opens quick task creation dialog
-  const handleSlotClick = useCallback((date: string, time: string) => {
-    setQuickTaskSlot({ date, time });
-    setQuickTaskDialogOpen(true);
+  // Handle slot click - opens context menu for creation
+  const handleSlotClick = useCallback((date: string, time: string, mouseEvent?: React.MouseEvent) => {
+    // If we have a mouse event, show context menu
+    if (mouseEvent) {
+      setContextMenu({
+        open: true,
+        x: mouseEvent.clientX,
+        y: mouseEvent.clientY,
+        date,
+        time,
+      });
+    } else {
+      // Fallback: open task creation directly (keyboard navigation)
+      setQuickTaskSlot({ date, time });
+      setQuickTaskDialogOpen(true);
+    }
   }, []);
+
+  // Handle context menu item selection
+  const handleCreateTask = useCallback(() => {
+    if (contextMenu) {
+      setQuickTaskSlot({ date: contextMenu.date, time: contextMenu.time });
+      setQuickTaskDialogOpen(true);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  // Handle create routine from context menu (placeholder for future)
+  const handleCreateRoutine = useCallback(() => {
+    if (contextMenu) {
+      // TODO: Implement routine creation dialog
+      toast.info('Création de routine', { 
+        description: 'La création de routines sera disponible prochainement.' 
+      });
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu?.open) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu?.open]);
 
   // Handle quick task creation
   const handleQuickTaskSubmit = useCallback(async (data: {
@@ -291,33 +346,49 @@ export function CalendarDashboard({
     <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-4 p-4">
       {/* Sidebar with mini calendar and tabs - hidden on mobile */}
       <div className="hidden lg:flex w-80 flex-shrink-0 flex-col gap-4">
-        {/* Mini Calendar */}
+        {/* Mini Calendar - Collapsible */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Navigation
-              {isPending && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+              <span className="flex items-center gap-2">
+                Navigation
+                {isPending && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setMiniCalendarCollapsed(!miniCalendarCollapsed)}
+              >
+                {miniCalendarCollapsed ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
+              </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-2">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              className="rounded-md"
-              weekStartsOn={1}
-              modifiers={{
-                hasEvents: (date) => datesWithEvents.has(date.toISOString().split('T')[0]),
-              }}
-              modifiersStyles={{
-                hasEvents: { 
-                  fontWeight: 'bold',
-                  textDecoration: 'underline',
-                  textDecorationColor: 'hsl(var(--primary))',
-                },
-              }}
-            />
-          </CardContent>
+          {!miniCalendarCollapsed && (
+            <CardContent className="p-2">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                className="rounded-md"
+                weekStartsOn={1}
+                modifiers={{
+                  hasEvents: (date) => datesWithEvents.has(date.toISOString().split('T')[0]),
+                }}
+                modifiersStyles={{
+                  hasEvents: { 
+                    fontWeight: 'bold',
+                    textDecoration: 'underline',
+                    textDecorationColor: 'hsl(var(--primary))',
+                  },
+                }}
+              />
+            </CardContent>
+          )}
         </Card>
 
         {/* Tabbed content: Unscheduled Tasks / Filters */}
@@ -639,6 +710,35 @@ export function CalendarDashboard({
         onSubmit={handleQuickTaskSubmit}
         isSubmitting={isCreatingTask}
       />
+
+      {/* Context Menu for slot click */}
+      {contextMenu?.open && (
+        <div
+          className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95"
+          style={{
+            top: contextMenu.y,
+            left: contextMenu.x,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+            onClick={handleCreateTask}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nouvelle tâche
+          </button>
+          <button
+            type="button"
+            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+            onClick={handleCreateRoutine}
+          >
+            <Repeat className="mr-2 h-4 w-4" />
+            Nouvelle routine
+          </button>
+        </div>
+      )}
     </div>
   );
 }

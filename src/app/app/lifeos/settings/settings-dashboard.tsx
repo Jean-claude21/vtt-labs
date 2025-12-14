@@ -10,7 +10,11 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Palette, Settings, Bell, Shield } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Palette, Settings, Bell, Shield, Loader2, Clock, CalendarClock } from 'lucide-react';
 import { DomainsList } from '@/features/lifeos/components/domains/domains-list';
 import { 
   createDomain, 
@@ -18,16 +22,40 @@ import {
   deleteDomain, 
   reorderDomains 
 } from '@/features/lifeos/actions/domains.actions';
+import { updatePreferences } from '@/features/lifeos/actions/preferences.actions';
 import type { Domain, CreateDomainInput } from '@/features/lifeos/schema/domains.schema';
+import type { UserPreferences, TimeBlocks } from '@/features/lifeos/schema/preferences.schema';
 
 interface SettingsDashboardProps {
   initialDomains: Domain[];
+  initialPreferences: UserPreferences | null;
   error: string | null;
 }
 
-export function SettingsDashboard({ initialDomains, error }: Readonly<SettingsDashboardProps>) {
+export function SettingsDashboard({ initialDomains, initialPreferences, error }: Readonly<SettingsDashboardProps>) {
   const router = useRouter();
   const [domains, setDomains] = React.useState<Domain[]>(initialDomains);
+  const [preferences, setPreferences] = React.useState<UserPreferences | null>(initialPreferences);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  // Time blocks state
+  const [timeBlocks, setTimeBlocks] = React.useState<TimeBlocks>(
+    preferences?.time_blocks ?? {
+      morning: { start: '06:00', end: '12:00' },
+      noon: { start: '12:00', end: '14:00' },
+      afternoon: { start: '14:00', end: '18:00' },
+      evening: { start: '18:00', end: '21:00' },
+      night: { start: '21:00', end: '23:59' },
+    }
+  );
+
+  // Auto-positioning state
+  const [autoPositionRoutines, setAutoPositionRoutines] = React.useState(
+    preferences?.auto_position_routines ?? true
+  );
+  const [autoPositionTasks, setAutoPositionTasks] = React.useState(
+    preferences?.auto_position_tasks ?? false
+  );
 
   if (error) {
     return (
@@ -87,6 +115,48 @@ export function SettingsDashboard({ initialDomains, error }: Readonly<SettingsDa
     }
   };
 
+  // Update time block
+  const handleTimeBlockChange = (
+    moment: keyof TimeBlocks,
+    field: 'start' | 'end',
+    value: string
+  ) => {
+    setTimeBlocks((prev) => ({
+      ...prev,
+      [moment]: { ...prev[moment], [field]: value },
+    }));
+  };
+
+  // Save preferences
+  const handleSavePreferences = async () => {
+    setIsSaving(true);
+    const result = await updatePreferences({
+      time_blocks: timeBlocks,
+      auto_position_routines: autoPositionRoutines,
+      auto_position_tasks: autoPositionTasks,
+    });
+    setIsSaving(false);
+
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+
+    if (result.data) {
+      setPreferences(result.data);
+      toast.success('Préférences sauvegardées');
+    }
+  };
+
+  // Time block labels
+  const timeBlockLabels: Record<keyof TimeBlocks, { label: string; emoji: string }> = {
+    morning: { label: 'Matin', emoji: '🌅' },
+    noon: { label: 'Midi', emoji: '☀️' },
+    afternoon: { label: 'Après-midi', emoji: '🌤️' },
+    evening: { label: 'Soir', emoji: '🌆' },
+    night: { label: 'Nuit', emoji: '🌙' },
+  };
+
   return (
     <div className="container py-6 space-y-6">
       <div>
@@ -140,19 +210,99 @@ export function SettingsDashboard({ initialDomains, error }: Readonly<SettingsDa
 
         {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-4">
+          {/* Auto-positioning Settings */}
           <Card>
             <CardHeader>
-              <CardTitle>Préférences du calendrier</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5" />
+                Positionnement automatique
+              </CardTitle>
               <CardDescription>
-                Personnalisez l&apos;affichage et le comportement du calendrier.
+                Choisissez si les routines et tâches doivent être automatiquement positionnées 
+                dans le calendrier en fonction de leurs contraintes horaires ou catégorie de moment.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                Configuration des préférences à venir...
-              </p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-position-routines" className="font-medium">
+                    Routines
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Positionner automatiquement les routines selon leurs contraintes horaires
+                  </p>
+                </div>
+                <Switch
+                  id="auto-position-routines"
+                  checked={autoPositionRoutines}
+                  onCheckedChange={setAutoPositionRoutines}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-position-tasks" className="font-medium">
+                    Tâches
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Positionner automatiquement les tâches (sinon elles restent &quot;À planifier&quot;)
+                  </p>
+                </div>
+                <Switch
+                  id="auto-position-tasks"
+                  checked={autoPositionTasks}
+                  onCheckedChange={setAutoPositionTasks}
+                />
+              </div>
             </CardContent>
           </Card>
+
+          {/* Time Blocks Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Plages horaires
+              </CardTitle>
+              <CardDescription>
+                Définissez les plages horaires pour chaque moment de la journée.
+                Ces horaires sont utilisés pour positionner automatiquement les routines 
+                ayant une catégorie de moment (matin, midi, après-midi, soir, nuit).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(Object.keys(timeBlockLabels) as Array<keyof TimeBlocks>).map((moment) => (
+                <div key={moment} className="flex items-center gap-4">
+                  <div className="w-32 flex items-center gap-2">
+                    <span>{timeBlockLabels[moment].emoji}</span>
+                    <Label className="font-medium">{timeBlockLabels[moment].label}</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      value={timeBlocks[moment].start}
+                      onChange={(e) => handleTimeBlockChange(moment, 'start', e.target.value)}
+                      className="w-32"
+                    />
+                    <span className="text-muted-foreground">à</span>
+                    <Input
+                      type="time"
+                      value={timeBlocks[moment].end}
+                      onChange={(e) => handleTimeBlockChange(moment, 'end', e.target.value)}
+                      className="w-32"
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleSavePreferences} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sauvegarder les préférences
+            </Button>
+          </div>
         </TabsContent>
 
         {/* Notifications Tab */}

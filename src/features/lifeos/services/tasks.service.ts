@@ -24,7 +24,7 @@ export type ServiceResult<T> = {
 // Valid status transitions
 const VALID_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   backlog: ['todo', 'cancelled', 'archived'],
-  todo: ['in_progress', 'blocked', 'cancelled', 'archived', 'backlog'],
+  todo: ['in_progress', 'done', 'blocked', 'cancelled', 'archived', 'backlog'],
   in_progress: ['done', 'blocked', 'cancelled', 'todo'],
   blocked: ['todo', 'in_progress', 'cancelled'],
   done: ['archived', 'todo'], // Can reopen

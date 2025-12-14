@@ -10,8 +10,23 @@
 import type { DbClient } from '@/lib/types';
 import type { 
   RoutineInstance,
-  RecurrenceConfig, 
+  RecurrenceConfig,
+  RoutineConstraints,
+  CategoryMoment,
 } from '../schema/routines.schema';
+import type { TimeBlocks } from '../schema/preferences.schema';
+
+// Template type with new fields
+interface RoutineTemplate {
+  id: string;
+  name: string;
+  category_moment: CategoryMoment | null;
+  constraints: RoutineConstraints | null;
+  default_start_time: string | null;
+  default_duration_minutes: number | null;
+  recurrence_config: RecurrenceConfig | null;
+  created_at: string;
+}
 
 // Result type following ActionResult pattern
 export type ServiceResult<T> = {
@@ -93,15 +108,84 @@ function shouldOccurOnDate(
   }
 }
 
+/**
+ * Default time blocks for category moments
+ */
+const DEFAULT_TIME_BLOCKS: TimeBlocks = {
+  morning: { start: '06:00', end: '12:00' },
+  noon: { start: '12:00', end: '14:00' },
+  afternoon: { start: '14:00', end: '18:00' },
+  evening: { start: '18:00', end: '21:00' },
+  night: { start: '21:00', end: '23:59' },
+};
+
+/**
+ * Calculate scheduled start/end times for a routine based on:
+ * 1. constraints.timeSlot (highest priority - exact time)
+ * 2. default_start_time + default_duration_minutes (template-level)
+ * 3. category_moment + time_blocks (user preferences)
+ */
+function calculateScheduledTimes(
+  template: RoutineTemplate,
+  timeBlocks: TimeBlocks | null
+): { start: string; end: string } | null {
+  const blocks = timeBlocks || DEFAULT_TIME_BLOCKS;
+  
+  // Priority 1: Exact time from constraints.timeSlot
+  if (template.constraints?.timeSlot?.required && template.constraints.timeSlot.startTime) {
+    return {
+      start: template.constraints.timeSlot.startTime,
+      end: template.constraints.timeSlot.endTime || addMinutes(template.constraints.timeSlot.startTime, 30),
+    };
+  }
+  
+  // Priority 2: Template default_start_time
+  if (template.default_start_time) {
+    const durationMinutes = template.default_duration_minutes || 30;
+    return {
+      start: template.default_start_time,
+      end: addMinutes(template.default_start_time, durationMinutes),
+    };
+  }
+  
+  // Priority 3: Category moment time block
+  if (template.category_moment && blocks[template.category_moment]) {
+    const block = blocks[template.category_moment];
+    const durationMinutes = template.default_duration_minutes || 30;
+    return {
+      start: block.start,
+      end: addMinutes(block.start, durationMinutes),
+    };
+  }
+  
+  // No positioning - will be in "to plan" sidebar
+  return null;
+}
+
+/**
+ * Add minutes to a time string (HH:mm)
+ */
+function addMinutes(time: string, minutes: number): string {
+  const [hours, mins] = time.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60) % 24;
+  const newMins = totalMinutes % 60;
+  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+}
+
 export const routineInstanceService = {
   /**
    * Generate routine instances for a specific date
    * This creates instances for all active routine templates that should occur on that date
+   * @param timeBlocks User-defined time blocks for category moments (optional)
+   * @param autoPosition Whether to auto-position routines (default: true)
    */
   async generateForDate(
     client: DbClient,
     userId: string,
-    date: Date
+    date: Date,
+    timeBlocks?: TimeBlocks | null,
+    autoPosition = true
   ): Promise<ServiceResult<RoutineInstance[]>> {
     // Normalize date to start of day
     const targetDate = new Date(date);
@@ -180,12 +264,20 @@ export const routineInstanceService = {
     }
 
     // Create new instances
-    const instancesToCreate = newTemplates.map((template) => ({
-      user_id: userId,
-      template_id: template.id,
-      scheduled_date: dateStr,
-      status: 'pending' as const,
-    }));
+    const instancesToCreate = newTemplates.map((template) => {
+      // Only calculate times if auto-positioning is enabled
+      const times = autoPosition 
+        ? calculateScheduledTimes(template as RoutineTemplate, timeBlocks ?? null)
+        : null;
+      return {
+        user_id: userId,
+        template_id: template.id,
+        scheduled_date: dateStr,
+        scheduled_start: times?.start || null,
+        scheduled_end: times?.end || null,
+        status: 'pending' as const,
+      };
+    });
 
     const { error: insertError } = await client
       .from('lifeos_routine_instances')

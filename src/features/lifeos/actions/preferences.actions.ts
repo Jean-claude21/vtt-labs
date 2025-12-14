@@ -14,6 +14,7 @@ import {
   calendarViewSchema,
   type UserPreferences,
   type CalendarView,
+  type UpdatePreferencesInput,
 } from '../schema/preferences.schema';
 import type { ActionResult } from '@/lib/types';
 
@@ -36,16 +37,7 @@ export async function getPreferences(): Promise<ActionResult<UserPreferences>> {
  * Update user preferences
  */
 export async function updatePreferences(
-  input: {
-    default_calendar_view?: CalendarView;
-    week_starts_on?: number;
-    show_routines?: boolean;
-    show_tasks?: boolean;
-    show_external_events?: boolean;
-    hidden_domain_ids?: string[];
-    routine_generation_horizon_days?: number;
-    preferences?: Record<string, unknown>;
-  }
+  input: UpdatePreferencesInput
 ): Promise<ActionResult<UserPreferences>> {
   const supabase = await createSSRClient();
   

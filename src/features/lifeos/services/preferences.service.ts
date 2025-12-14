@@ -33,6 +33,8 @@ const DEFAULT_PREFERENCES: Omit<UserPreferences, 'id' | 'user_id' | 'created_at'
     evening: { start: '18:00', end: '21:00' },
     night: { start: '21:00', end: '23:59' },
   },
+  auto_position_routines: true,
+  auto_position_tasks: false,
   routine_generation_horizon_days: 14,
   preferences: {},
 };
