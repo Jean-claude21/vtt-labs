@@ -212,6 +212,8 @@ export const routineInstanceSchema = z.object({
   mood_after: z.number().nullable(),
   energy_level: z.number().nullable(),
   notes: z.string().nullable(),
+  // Task linkage
+  linked_task_id: z.string().uuid().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

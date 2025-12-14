@@ -173,13 +173,13 @@ export function PlanningDashboard({
     notes?: string
   ) => {
     try {
-      const result = await completeRoutineInstance(
-        instanceId,
-        actualValue,
-        mood,
-        energyLevel,
+      const result = await completeRoutineInstance({
+        id: instanceId,
+        actual_value: actualValue,
+        mood_after: mood,
+        energy_level: energyLevel,
         notes
-      );
+      });
       
       if (result.error) {
         toast.error('Erreur', { description: result.error });
@@ -213,7 +213,10 @@ export function PlanningDashboard({
   // Handle routine instance skip
   const handleSkipRoutine = async (instanceId: string, reason?: string) => {
     try {
-      const result = await skipRoutineInstance(instanceId, reason);
+      const result = await skipRoutineInstance({
+        id: instanceId,
+        skip_reason: reason || 'Non spécifié'
+      });
       
       if (result.error) {
         toast.error('Erreur', { description: result.error });

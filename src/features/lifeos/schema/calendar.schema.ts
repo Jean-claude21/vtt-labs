@@ -62,9 +62,16 @@ export const calendarEventSchema = z.object({
   isFlexible: z.boolean().default(true),
   projectName: z.string().nullable().optional(),
   
+  // Routine-task linkage
+  linkedTaskId: z.string().uuid().nullable().optional(),
+  
   // Timer (for tasks)
   timerIsRunning: z.boolean().optional(),
   timerAccumulatedSeconds: z.number().optional(),
+  
+  // Actual time tracking (for AI stats)
+  actualStart: z.date().nullable().optional(),
+  actualEnd: z.date().nullable().optional(),
 });
 
 export type CalendarEvent = z.infer<typeof calendarEventSchema>;

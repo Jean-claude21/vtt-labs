@@ -12,7 +12,13 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,6 +26,10 @@ import {
   List,
   Grid3X3,
   Plus,
+  Clock,
+  ArrowUp,
+  ArrowDown,
+  ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, CalendarView } from '@/features/lifeos/schema/calendar.schema';
@@ -30,6 +40,8 @@ interface CalendarViewProps {
   initialView?: CalendarView;
   onEventClick?: (event: CalendarEvent) => void;
   onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  onTimeShift?: (eventId: string, shiftMinutes: number) => void;
+  onCreateTaskFromRoutine?: (instanceId: string) => void;
   onDateChange?: (date: Date) => void;
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
@@ -40,6 +52,9 @@ export function CalendarViewComponent({
   events,
   initialView = 'week',
   onEventClick,
+  onEventDrop,
+  onTimeShift,
+  onCreateTaskFromRoutine,
   onDateChange,
   draggedTask,
   onTaskDrop,
@@ -47,6 +62,7 @@ export function CalendarViewComponent({
 }: Readonly<CalendarViewProps>) {
   const [currentDate, setCurrentDate] = React.useState(new Date());
   const [view, setView] = React.useState<CalendarView>(initialView);
+  const [draggedEvent, setDraggedEvent] = React.useState<CalendarEvent | null>(null);
 
   // Navigation helpers
   const goToPrevious = () => {
@@ -172,6 +188,12 @@ export function CalendarViewComponent({
             draggedTask={draggedTask}
             onTaskDrop={onTaskDrop}
             onSlotClick={onSlotClick}
+            draggedEvent={draggedEvent}
+            onEventDragStart={setDraggedEvent}
+            onEventDragEnd={() => setDraggedEvent(null)}
+            onEventDrop={onEventDrop}
+            onTimeShift={onTimeShift}
+            onCreateTaskFromRoutine={onCreateTaskFromRoutine}
           />
         )}
         {view === 'week' && (
@@ -182,6 +204,12 @@ export function CalendarViewComponent({
             draggedTask={draggedTask}
             onTaskDrop={onTaskDrop}
             onSlotClick={onSlotClick}
+            draggedEvent={draggedEvent}
+            onEventDragStart={setDraggedEvent}
+            onEventDragEnd={() => setDraggedEvent(null)}
+            onEventDrop={onEventDrop}
+            onTimeShift={onTimeShift}
+            onCreateTaskFromRoutine={onCreateTaskFromRoutine}
           />
         )}
         {view === 'month' && (
@@ -222,6 +250,12 @@ function DayView({
   draggedTask,
   onTaskDrop,
   onSlotClick,
+  draggedEvent,
+  onEventDragStart,
+  onEventDragEnd,
+  onEventDrop,
+  onTimeShift,
+  onCreateTaskFromRoutine,
 }: Readonly<{
   date: Date;
   events: CalendarEvent[];
@@ -229,6 +263,12 @@ function DayView({
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
   onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
+  draggedEvent?: CalendarEvent | null;
+  onEventDragStart?: (event: CalendarEvent) => void;
+  onEventDragEnd?: () => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  onTimeShift?: (eventId: string, shiftMinutes: number) => void;
+  onCreateTaskFromRoutine?: (instanceId: string) => void;
 }>) {
   // Generate time slots from 00:00 to 23:00
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -236,11 +276,11 @@ function DayView({
   const [dragOverHour, setDragOverHour] = React.useState<number | null>(null);
 
   const handleDragOver = React.useCallback((e: React.DragEvent, hour: number) => {
-    if (draggedTask) {
+    if (draggedTask || draggedEvent) {
       e.preventDefault();
       setDragOverHour(hour);
     }
-  }, [draggedTask]);
+  }, [draggedTask, draggedEvent]);
 
   const handleDragLeave = React.useCallback(() => {
     setDragOverHour(null);
@@ -249,11 +289,26 @@ function DayView({
   const handleDrop = React.useCallback((e: React.DragEvent, hour: number) => {
     e.preventDefault();
     setDragOverHour(null);
+    
+    // Handle task drop from sidebar
     if (draggedTask && onTaskDrop) {
       const time = `${String(hour).padStart(2, '0')}:00`;
       onTaskDrop(draggedTask, dateStr, time);
     }
-  }, [draggedTask, onTaskDrop, dateStr]);
+    
+    // Handle event repositioning
+    if (draggedEvent && onEventDrop) {
+      const duration = draggedEvent.end && draggedEvent.start 
+        ? draggedEvent.end.getTime() - draggedEvent.start.getTime()
+        : 60 * 60 * 1000; // Default 1h
+      
+      const newStart = new Date(date);
+      newStart.setHours(hour, 0, 0, 0);
+      const newEnd = new Date(newStart.getTime() + duration);
+      
+      onEventDrop(draggedEvent.id, newStart, newEnd);
+    }
+  }, [draggedTask, onTaskDrop, dateStr, draggedEvent, onEventDrop, date]);
 
   const handleSlotClick = React.useCallback((hour: number, mouseEvent?: React.MouseEvent) => {
     if (onSlotClick) {
@@ -314,11 +369,16 @@ function DayView({
                 )}
                 {/* Events for this hour - handle overlaps */}
                 <div className="flex gap-1">
-                  {hourEvents.map((event, index) => (
+                  {hourEvents.map((event) => (
                     <EventBlock
                       key={event.id}
                       event={event}
                       onClick={() => onEventClick?.(event)}
+                      draggable={!!onEventDrop}
+                      onDragStart={() => onEventDragStart?.(event)}
+                      onDragEnd={onEventDragEnd}
+                      onTimeShift={onTimeShift}
+                      onCreateTaskFromRoutine={onCreateTaskFromRoutine}
                       style={{ 
                         position: 'relative',
                         flex: 1,
@@ -344,6 +404,12 @@ function WeekView({
   draggedTask,
   onTaskDrop,
   onSlotClick,
+  draggedEvent,
+  onEventDragStart,
+  onEventDragEnd,
+  onEventDrop,
+  onTimeShift,
+  onCreateTaskFromRoutine,
 }: Readonly<{
   startDate: Date;
   events: CalendarEvent[];
@@ -351,6 +417,12 @@ function WeekView({
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
   onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
+  draggedEvent?: CalendarEvent | null;
+  onEventDragStart?: (event: CalendarEvent) => void;
+  onEventDragEnd?: () => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  onTimeShift?: (eventId: string, shiftMinutes: number) => void;
+  onCreateTaskFromRoutine?: (instanceId: string) => void;
 }>) {
   // Generate days of the week
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -410,6 +482,12 @@ function WeekView({
                 draggedTask={draggedTask}
                 onTaskDrop={onTaskDrop}
                 onSlotClick={onSlotClick}
+                draggedEvent={draggedEvent}
+                onEventDragStart={onEventDragStart}
+                onEventDragEnd={onEventDragEnd}
+                onEventDrop={onEventDrop}
+                onTimeShift={onTimeShift}
+                onCreateTaskFromRoutine={onCreateTaskFromRoutine}
               />
             ))}
           </div>
@@ -428,6 +506,12 @@ function WeekDayCell({
   draggedTask,
   onTaskDrop,
   onSlotClick,
+  draggedEvent,
+  onEventDragStart,
+  onEventDragEnd,
+  onEventDrop,
+  onTimeShift,
+  onCreateTaskFromRoutine,
 }: Readonly<{
   day: Date;
   hour: number;
@@ -436,6 +520,12 @@ function WeekDayCell({
   draggedTask?: Task | null;
   onTaskDrop?: (task: Task, date: string, time: string) => void;
   onSlotClick?: (date: string, time: string, mouseEvent?: React.MouseEvent) => void;
+  draggedEvent?: CalendarEvent | null;
+  onEventDragStart?: (event: CalendarEvent) => void;
+  onEventDragEnd?: () => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  onTimeShift?: (eventId: string, shiftMinutes: number) => void;
+  onCreateTaskFromRoutine?: (instanceId: string) => void;
 }>) {
   const dayStr = day.toISOString().split('T')[0];
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -446,11 +536,11 @@ function WeekDayCell({
   });
 
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
-    if (draggedTask) {
+    if (draggedTask || draggedEvent) {
       e.preventDefault();
       setIsDragOver(true);
     }
-  }, [draggedTask]);
+  }, [draggedTask, draggedEvent]);
 
   const handleDragLeave = React.useCallback(() => {
     setIsDragOver(false);
@@ -459,11 +549,26 @@ function WeekDayCell({
   const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    
+    // Handle task drop from sidebar
     if (draggedTask && onTaskDrop) {
       const time = `${String(hour).padStart(2, '0')}:00`;
       onTaskDrop(draggedTask, dayStr, time);
     }
-  }, [draggedTask, onTaskDrop, dayStr, hour]);
+    
+    // Handle event repositioning
+    if (draggedEvent && onEventDrop) {
+      const duration = draggedEvent.end && draggedEvent.start 
+        ? draggedEvent.end.getTime() - draggedEvent.start.getTime()
+        : 60 * 60 * 1000; // Default 1h
+      
+      const newStart = new Date(day);
+      newStart.setHours(hour, 0, 0, 0);
+      const newEnd = new Date(newStart.getTime() + duration);
+      
+      onEventDrop(draggedEvent.id, newStart, newEnd);
+    }
+  }, [draggedTask, onTaskDrop, dayStr, hour, draggedEvent, onEventDrop, day]);
 
   const handleClick = React.useCallback((e?: React.MouseEvent) => {
     if (onSlotClick && dayEvents.length === 0) {
@@ -508,6 +613,11 @@ function WeekDayCell({
             event={event}
             compact
             onClick={() => onEventClick?.(event)}
+            draggable={!!onEventDrop}
+            onDragStart={() => onEventDragStart?.(event)}
+            onDragEnd={onEventDragEnd}
+            onTimeShift={onTimeShift}
+            onCreateTaskFromRoutine={onCreateTaskFromRoutine}
             style={{
               position: 'relative',
               flex: 1,
@@ -682,12 +792,22 @@ function EventBlock({
   showTime = true,
   onClick,
   style,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  onTimeShift,
+  onCreateTaskFromRoutine,
 }: Readonly<{
   event: CalendarEvent;
   compact?: boolean;
   showTime?: boolean; // Show time even in compact mode (false for month view)
   onClick?: () => void;
   style?: React.CSSProperties;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onTimeShift?: (eventId: string, shiftMinutes: number) => void;
+  onCreateTaskFromRoutine?: (instanceId: string) => void;
 }>) {
   // Calculate top position - avoid nested ternary
   let topPosition: number | undefined;
@@ -695,18 +815,38 @@ function EventBlock({
     topPosition = compact ? 2 : 4;
   }
   
+  const handleDragStart = React.useCallback((e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+    onDragStart?.();
+  }, [event.id, onDragStart]);
+
+  const handleDragEnd = React.useCallback(() => {
+    onDragEnd?.();
+  }, [onDragEnd]);
+  
   // Format time string - guard against null dates
   const timeString = event.start && event.end 
     ? `${event.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - ${event.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
     : '';
-  
-  return (
+
+  // Check if event is completed
+  const isCompleted = event.isCompleted || event.status === 'done' || event.status === 'completed';
+
+  const eventButton = (
     <button
       type="button"
+      draggable={draggable}
+      onDragStart={draggable ? handleDragStart : undefined}
+      onDragEnd={draggable ? handleDragEnd : undefined}
       className={cn(
-        'rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden text-left',
+        'rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden text-left w-full',
         compact ? 'text-xs' : 'text-sm',
-        !style && 'absolute left-1 right-1'
+        !style && 'absolute left-1 right-1',
+        // Completed events: reduced opacity and visual indicator
+        isCompleted && 'opacity-60',
+        // Draggable cursor
+        draggable && 'cursor-grab active:cursor-grabbing'
       )}
       style={{
         backgroundColor: event.color || '#6B7280',
@@ -720,19 +860,89 @@ function EventBlock({
       }}
     >
       <div className="flex items-center gap-1">
-        {event.icon && <span>{event.icon}</span>}
-        <span className="font-medium truncate">{event.title}</span>
+        {/* Checkmark for completed events */}
+        {isCompleted && <span className="text-green-300">✓</span>}
+        {!isCompleted && event.icon && <span>{event.icon}</span>}
+        <span className={cn(
+          "font-medium truncate",
+          isCompleted && "line-through opacity-80"
+        )}>{event.title}</span>
       </div>
       {/* Show time in compact mode if showTime=true, always show in non-compact */}
-      {(showTime || !compact) && (
+      {(showTime || !compact) && timeString && (
         <div className={cn(
           "flex items-center gap-2 opacity-80",
-          compact ? "text-[10px]" : "text-xs"
+          compact ? "text-[10px]" : "text-xs",
+          isCompleted && "line-through"
         )}>
           <span className="truncate">{timeString}</span>
-          {event.isCompleted && !compact && <Badge variant="outline" className="text-white border-white/50">✓</Badge>}
         </div>
       )}
     </button>
+  );
+
+  // If no time shift callback, render without context menu
+  if (!onTimeShift) {
+    return eventButton;
+  }
+  
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        {eventButton}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem
+          onClick={() => onTimeShift(event.id, -60)}
+          className="gap-2"
+        >
+          <ArrowUp className="h-4 w-4" />
+          Décaler -1h
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => onTimeShift(event.id, -30)}
+          className="gap-2"
+        >
+          <ArrowUp className="h-4 w-4" />
+          Décaler -30min
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={() => onTimeShift(event.id, 30)}
+          className="gap-2"
+        >
+          <ArrowDown className="h-4 w-4" />
+          Décaler +30min
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => onTimeShift(event.id, 60)}
+          className="gap-2"
+        >
+          <ArrowDown className="h-4 w-4" />
+          Décaler +1h
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={() => onClick?.()}
+          className="gap-2"
+        >
+          <Clock className="h-4 w-4" />
+          Modifier horaires...
+        </ContextMenuItem>
+        {/* Show "Create linked task" only for routine instances */}
+        {event.entityType === 'routine_instance' && onCreateTaskFromRoutine && !event.linkedTaskId && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => onCreateTaskFromRoutine(event.entityId)}
+              className="gap-2"
+            >
+              <ListTodo className="h-4 w-4" />
+              Créer tâche liée
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

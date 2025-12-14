@@ -116,7 +116,46 @@ export async function updateTask(
 }
 
 /**
+ * Start a task (records actual_start time and sets status to in_progress)
+ */
+export async function startTask(
+  taskId: string
+): Promise<ActionResult<Task>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!taskId) {
+    return { data: null, error: 'ID de tâche requis' };
+  }
+
+  // Use RPC function if available, otherwise fallback to direct update
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_tasks')
+    .update({
+      actual_start: new Date().toISOString(),
+      status: 'in_progress',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+/**
  * Complete a task (shortcut for updateTaskStatus with 'done')
+ * Also records actual_end time
  */
 export async function completeTask(
   taskId: string
@@ -132,8 +171,44 @@ export async function completeTask(
     return { data: null, error: 'ID de tâche requis' };
   }
 
-  const result = await taskService.updateStatus(supabase, user.id, taskId, 'done');
-  return result;
+  // First, get the task to calculate duration
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existingTask } = await (supabase as any)
+    .from('lifeos_tasks')
+    .select('actual_start, actual_minutes')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single();
+
+  // Calculate additional minutes if actual_start exists
+  let additionalMinutes = 0;
+  if (existingTask?.actual_start) {
+    const startTime = new Date(existingTask.actual_start);
+    const now = new Date();
+    additionalMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
+  }
+
+  // Update with actual_end and completed_at
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_tasks')
+    .update({
+      actual_end: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      status: 'done',
+      actual_minutes: (existingTask?.actual_minutes || 0) + additionalMinutes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
 }
 
 /**
@@ -279,7 +354,8 @@ export async function scheduleTask(
     return { data: null, error: 'Format d\'heure invalide (HH:mm)' };
   }
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('lifeos_tasks')
     .update({
       scheduled_date: scheduledDate,

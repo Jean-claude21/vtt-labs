@@ -154,6 +154,12 @@ export const taskSchema = z.object({
   // Scheduled (when I PLAN to work on it) - V2 Calendar
   scheduled_date: z.string().nullable().optional(),
   scheduled_time: z.string().nullable().optional(),
+  // Actual times (when I REALLY did it) - for stats
+  actual_start: z.string().nullable().optional(),
+  actual_end: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  // Routine linkage
+  routine_instance_id: z.string().uuid().nullable().optional(),
   // Timer fields (V2)
   timer_started_at: z.string().nullable().optional(),
   timer_accumulated_seconds: z.number().default(0),

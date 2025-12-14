@@ -220,6 +220,8 @@ export const calendarService = {
         projectName: project?.name || null,
         timerIsRunning: task.timer_is_running,
         timerAccumulatedSeconds: task.timer_accumulated_seconds,
+        actualStart: task.actual_start ? new Date(task.actual_start) : null,
+        actualEnd: task.actual_end ? new Date(task.actual_end) : null,
       });
     }
 

@@ -388,3 +388,73 @@ export async function getTopStreaks(
     error: null,
   };
 }
+
+/**
+ * Reschedule a routine instance to a new time
+ */
+export async function rescheduleRoutineInstance(
+  instanceId: string,
+  newStart: string, // ISO datetime or HH:mm time
+  newEnd: string    // ISO datetime or HH:mm time
+): Promise<ActionResult<RoutineInstance>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!instanceId) {
+    return { data: null, error: 'ID d\'instance requis' };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .update({
+      scheduled_start: newStart,
+      scheduled_end: newEnd,
+    })
+    .eq('id', instanceId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+/**
+ * Create a task from a routine instance for tracking
+ * Uses the database function for atomic operation
+ */
+export async function createTaskFromRoutine(
+  instanceId: string
+): Promise<ActionResult<{ taskId: string }>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!instanceId) {
+    return { data: null, error: 'ID d\'instance requis' };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .rpc('lifeos_create_task_from_routine', {
+      p_instance_id: instanceId,
+      p_user_id: user.id,
+    });
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: { taskId: data }, error: null };
+}

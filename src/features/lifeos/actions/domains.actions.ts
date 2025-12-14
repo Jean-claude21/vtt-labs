@@ -44,7 +44,8 @@ export async function getDomains(): Promise<ActionResult<Domain[]>> {
   // If no domains exist, seed all demo data (domains, routines, tasks, preferences)
   if (result.data?.length === 0) {
     // Call the SQL function to seed all demo data
-    const { error: seedError } = await supabase.rpc('lifeos_seed_demo_data', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: seedError } = await (supabase.rpc as any)('lifeos_seed_demo_data', {
       p_user_id: user.id
     });
     

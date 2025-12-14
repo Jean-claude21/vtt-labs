@@ -16,6 +16,7 @@ import { EventTrackingDialog } from '@/features/lifeos/components/calendar/event
 import { TaskForm } from '@/features/lifeos/components/tasks/task-form';
 import { getCalendarEvents } from '@/features/lifeos/actions/calendar.actions';
 import { getUnscheduledTasks, scheduleTask, createTask } from '@/features/lifeos/actions/tasks.actions';
+import { rescheduleRoutineInstance, createTaskFromRoutine } from '@/features/lifeos/actions/routines.actions';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -220,6 +221,106 @@ export function CalendarDashboard({
   const handleTaskDragEnd = useCallback(() => {
     setDraggedTask(null);
   }, []);
+
+  // Handle event drop (repositioning existing events)
+  const handleEventDrop = useCallback(async (eventId: string, newStart: Date, newEnd: Date) => {
+    // Find the event to determine its type
+    const event = events.find(e => e.id === eventId);
+    if (!event) {
+      toast.error('Erreur', { description: 'Événement non trouvé' });
+      return;
+    }
+
+    const dateStr = newStart.toISOString().split('T')[0];
+    const timeStr = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+    const endTimeStr = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+
+    let result;
+    
+    if (event.entityType === 'task') {
+      // Reschedule task
+      result = await scheduleTask(event.entityId, dateStr, timeStr);
+    } else if (event.entityType === 'routine_instance') {
+      // Reschedule routine instance
+      result = await rescheduleRoutineInstance(event.entityId, timeStr, endTimeStr);
+    } else {
+      toast.error('Erreur', { description: 'Type d\'événement non supporté' });
+      return;
+    }
+
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+
+    toast.success('Événement déplacé', { 
+      description: `"${event.title}" reprogrammé à ${timeStr}` 
+    });
+
+    // Reload calendar events
+    loadEventsForDate(selectedDate);
+  }, [events, selectedDate, loadEventsForDate]);
+
+  // Handle time shift from context menu (quick time adjustment)
+  const handleTimeShift = useCallback(async (eventId: string, shiftMinutes: number) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event?.start) {
+      toast.error('Erreur', { description: 'Événement non trouvé' });
+      return;
+    }
+
+    // Calculate new times
+    const newStart = new Date(event.start.getTime() + shiftMinutes * 60 * 1000);
+    const duration = event.end && event.start 
+      ? event.end.getTime() - event.start.getTime()
+      : 60 * 60 * 1000; // Default 1h
+    const newEnd = new Date(newStart.getTime() + duration);
+
+    const timeStr = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+    const endTimeStr = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+
+    let result;
+    
+    if (event.entityType === 'task') {
+      const dateStr = newStart.toISOString().split('T')[0];
+      result = await scheduleTask(event.entityId, dateStr, timeStr);
+    } else if (event.entityType === 'routine_instance') {
+      result = await rescheduleRoutineInstance(event.entityId, timeStr, endTimeStr);
+    } else {
+      toast.error('Erreur', { description: 'Type d\'événement non supporté' });
+      return;
+    }
+
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+
+    const direction = shiftMinutes > 0 ? '+' : '';
+    toast.success('Horaire modifié', { 
+      description: `"${event.title}" ${direction}${shiftMinutes}min → ${timeStr}` 
+    });
+
+    loadEventsForDate(selectedDate);
+  }, [events, selectedDate, loadEventsForDate]);
+
+  // Handle creating a task from a routine instance
+  const handleCreateTaskFromRoutine = useCallback(async (instanceId: string) => {
+    const result = await createTaskFromRoutine(instanceId);
+    
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+
+    toast.success('Tâche créée', { 
+      description: 'Une tâche liée a été créée pour cette routine' 
+    });
+
+    // Reload events and tasks
+    loadEventsForDate(selectedDate);
+    refreshUnscheduledTasks();
+  }, [selectedDate, loadEventsForDate, refreshUnscheduledTasks]);
 
   // Handle date range change from main calendar
   const handleDateChange = useCallback((newDate: Date) => {
@@ -687,6 +788,9 @@ export function CalendarDashboard({
           onDateChange={handleDateChange}
           draggedTask={draggedTask}
           onTaskDrop={handleTaskDrop}
+          onEventDrop={handleEventDrop}
+          onTimeShift={handleTimeShift}
+          onCreateTaskFromRoutine={handleCreateTaskFromRoutine}
           onSlotClick={handleSlotClick}
         />
       </div>

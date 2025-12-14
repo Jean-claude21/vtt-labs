@@ -45,10 +45,13 @@ import {
   completeRoutineInstance, 
   skipRoutineInstance,
   partialRoutineInstance,
+  rescheduleRoutineInstance,
 } from '@/features/lifeos/actions/routines.actions';
 import { 
   completeTask, 
   updateTaskStatus,
+  scheduleTask,
+  startTask,
 } from '@/features/lifeos/actions/tasks.actions';
 
 interface EventTrackingDialogProps {
@@ -97,10 +100,15 @@ export function EventTrackingDialog({
   const [notes, setNotes] = useState<string>('');
   const [actualValue, setActualValue] = useState<string>('');
   const [skipReason, setSkipReason] = useState<string>('');
+  
+  // Schedule modification state
+  const [scheduleDate, setScheduleDate] = useState<string>('');
+  const [scheduleStartTime, setScheduleStartTime] = useState<string>('');
+  const [scheduleEndTime, setScheduleEndTime] = useState<string>('');
 
   // Reset form when dialog opens
   React.useEffect(() => {
-    if (open) {
+    if (open && event) {
       setMoodBefore(3);
       setMoodAfter(3);
       setEnergyLevel(5);
@@ -108,8 +116,17 @@ export function EventTrackingDialog({
       setActualValue('');
       setSkipReason('');
       setActiveTab('quick');
+      
+      // Initialize schedule times from event
+      if (event.start) {
+        setScheduleDate(event.start.toISOString().split('T')[0]);
+        setScheduleStartTime(event.start.toTimeString().substring(0, 5));
+      }
+      if (event.end) {
+        setScheduleEndTime(event.end.toTimeString().substring(0, 5));
+      }
     }
-  }, [open]);
+  }, [open, event]);
 
   if (!event) return null;
 
@@ -117,7 +134,8 @@ export function EventTrackingDialog({
   const isTask = event.type === 'task';
 
   // Format time display
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | null | undefined) => {
+    if (!date) return '--:--';
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -199,6 +217,65 @@ export function EventTrackingDialog({
     });
   };
 
+  // Handle starting a task (records actual_start time)
+  const handleStartTask = async () => {
+    if (!event.entityId) return;
+
+    startTransition(async () => {
+      const result = await startTask(event.entityId);
+
+      if (result.error) {
+        toast.error('Erreur', { description: result.error });
+        return;
+      }
+
+      toast.success('Tâche commencée!', { 
+        description: `"${event.title}" en cours` 
+      });
+      
+      onEventUpdated?.();
+    });
+  };
+
+  // Handle schedule modification
+  const handleUpdateSchedule = async () => {
+    if (!event.entityId || !scheduleDate || !scheduleStartTime) {
+      toast.error('Veuillez remplir la date et l\'heure de début');
+      return;
+    }
+
+    startTransition(async () => {
+      let result;
+      
+      if (isTask) {
+        // For tasks, update scheduled_date and scheduled_time
+        result = await scheduleTask(event.entityId, scheduleDate, scheduleStartTime);
+      } else if (isRoutine) {
+        // For routines, update scheduled_start and scheduled_end
+        result = await rescheduleRoutineInstance(
+          event.entityId, 
+          scheduleStartTime, 
+          scheduleEndTime || scheduleStartTime
+        );
+      } else {
+        toast.error('Type d\'événement non supporté');
+        return;
+      }
+
+      if (result.error) {
+        toast.error('Erreur', { description: result.error });
+        return;
+      }
+
+      toast.success('Horaires modifiés', { 
+        description: `"${event.title}" reprogrammé à ${scheduleStartTime}` 
+      });
+      
+      onOpenChange(false);
+      onEventUpdated?.();
+    });
+  };
+
   // Handle task status change
   const handleTaskStatus = async (status: 'in_progress' | 'cancelled') => {
     if (!event.entityId) return;
@@ -245,8 +322,9 @@ export function EventTrackingDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="quick">Action rapide</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="quick">Actions</TabsTrigger>
+            <TabsTrigger value="schedule">Horaires</TabsTrigger>
             <TabsTrigger value="details">Détails</TabsTrigger>
           </TabsList>
 
@@ -313,7 +391,7 @@ export function EventTrackingDialog({
                 <Button
                   variant="outline"
                   className="flex flex-col h-auto py-4 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
-                  onClick={() => handleTaskStatus('in_progress')}
+                  onClick={handleStartTask}
                   disabled={isPending}
                 >
                   {isPending ? (
@@ -321,7 +399,7 @@ export function EventTrackingDialog({
                   ) : (
                     <Timer className="h-6 w-6 mb-2 text-blue-600" />
                   )}
-                  <span className="text-sm font-medium">En cours</span>
+                  <span className="text-sm font-medium">Commencer</span>
                 </Button>
                 
                 <Button
@@ -339,6 +417,135 @@ export function EventTrackingDialog({
                 </Button>
               </div>
             )}
+          </TabsContent>
+
+          {/* Schedule Tab - Modify times */}
+          <TabsContent value="schedule" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              {/* Date */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Date
+                </Label>
+                <Input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+              </div>
+              
+              {/* Start Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Début
+                  </Label>
+                  <Input
+                    type="time"
+                    value={scheduleStartTime}
+                    onChange={(e) => setScheduleStartTime(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Fin
+                  </Label>
+                  <Input
+                    type="time"
+                    value={scheduleEndTime}
+                    onChange={(e) => setScheduleEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {/* Duration info */}
+              {scheduleStartTime && scheduleEndTime && (
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    Durée: {(() => {
+                      const [startH, startM] = scheduleStartTime.split(':').map(Number);
+                      const [endH, endM] = scheduleEndTime.split(':').map(Number);
+                      const durationMin = (endH * 60 + endM) - (startH * 60 + startM);
+                      if (durationMin < 0) return 'Invalide';
+                      const hours = Math.floor(durationMin / 60);
+                      const mins = durationMin % 60;
+                      return hours > 0 ? `${hours}h${mins > 0 ? mins : ''}` : `${mins}min`;
+                    })()}
+                  </div>
+                </div>
+              )}
+              
+              {/* Actual vs Scheduled comparison (for tasks) */}
+              {isTask && (event.actualStart || event.actualEnd) && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium text-sm">
+                    <Timer className="h-4 w-4" />
+                    Temps réel
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Planifié:</span>
+                      <div className="font-medium">
+                        {formatTime(event.start)} - {formatTime(event.end)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Réel:</span>
+                      <div className="font-medium text-blue-600 dark:text-blue-400">
+                        {event.actualStart ? formatTime(event.actualStart) : '--:--'}
+                        {' - '}
+                        {event.actualEnd ? formatTime(event.actualEnd) : '...'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Show difference */}
+                  {event.actualStart && (
+                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2">
+                      {(() => {
+                        const plannedStart = event.start.getTime();
+                        const actualStart = event.actualStart.getTime();
+                        const diffMinutes = Math.round((actualStart - plannedStart) / 60000);
+                        
+                        if (Math.abs(diffMinutes) < 5) {
+                          return <span className="text-green-600">✓ Commencé à l&apos;heure</span>;
+                        } else if (diffMinutes > 0) {
+                          const hours = Math.floor(diffMinutes / 60);
+                          const mins = diffMinutes % 60;
+                          const label = hours > 0 ? `${hours}h${mins}min` : `${mins}min`;
+                          return <span className="text-orange-600">⏰ Commencé {label} en retard</span>;
+                        } else {
+                          const absDiff = Math.abs(diffMinutes);
+                          const hours = Math.floor(absDiff / 60);
+                          const mins = absDiff % 60;
+                          const label = hours > 0 ? `${hours}h${mins}min` : `${mins}min`;
+                          return <span className="text-green-600">⚡ Commencé {label} en avance</span>;
+                        }
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <Separator />
+              
+              {/* Save button */}
+              <Button
+                className="w-full"
+                onClick={handleUpdateSchedule}
+                disabled={isPending || !scheduleDate || !scheduleStartTime}
+              >
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Clock className="h-4 w-4 mr-2" />
+                Enregistrer les horaires
+              </Button>
+            </div>
           </TabsContent>
 
           {/* Details Tab (for routines) */}
@@ -403,7 +610,7 @@ export function EventTrackingDialog({
                 <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <Zap className="h-4 w-4" />
-                    Niveau d'énergie: {energyLevel}/10 
+                    Niveau d&apos;énergie: {energyLevel}/10 
                     <span className="text-muted-foreground text-sm">
                       ({energyLabels[energyLevel]})
                     </span>
