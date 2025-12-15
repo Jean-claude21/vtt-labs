@@ -439,7 +439,8 @@ export async function unscheduleTask(
     return { data: null, error: 'ID de tâche requis' };
   }
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('lifeos_tasks')
     .update({
       scheduled_date: null,
@@ -522,8 +523,22 @@ export async function stopTaskTimer(
     return { data: null, error: 'ID de tâche requis' };
   }
 
-  const result = await timerService.stop(supabase, user.id, taskId);
-  return result;
+  const stopResult = await timerService.stop(supabase, user.id, taskId);
+  if (stopResult.error) {
+    return { data: null, error: stopResult.error };
+  }
+
+  // Return a clean timer state (timer has been stopped and reset)
+  return {
+    data: {
+      taskId,
+      isRunning: false,
+      startedAt: null,
+      accumulatedSeconds: 0,
+      currentSessionSeconds: 0,
+    },
+    error: null,
+  };
 }
 
 /**

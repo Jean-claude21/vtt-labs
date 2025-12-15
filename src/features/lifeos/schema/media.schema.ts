@@ -18,20 +18,20 @@ export const mediaCategorySchema = z.enum([
   'other',
 ]);
 
-export const entityTypeSchema = z.enum([
+export const mediaEntityTypeSchema = z.enum([
   'routine_instance',
   'task',
 ]);
 
 export type MediaCategory = z.infer<typeof mediaCategorySchema>;
-export type EntityType = z.infer<typeof entityTypeSchema>;
+export type MediaEntityType = z.infer<typeof mediaEntityTypeSchema>;
 
 // ============================================================================
 // UPLOAD MEDIA
 // ============================================================================
 
 export const uploadMediaSchema = z.object({
-  entity_type: entityTypeSchema,
+  entity_type: mediaEntityTypeSchema,
   entity_id: z.string().uuid({ message: 'Invalid entity ID' }),
   file_name: z.string().min(1, 'File name is required'),
   file_type: z.string().min(1, 'File type is required'),
@@ -92,7 +92,7 @@ export type TrackingMedia = z.infer<typeof trackingMediaSchema>;
 // ============================================================================
 
 export const mediaFiltersSchema = z.object({
-  entity_type: entityTypeSchema.optional(),
+  entity_type: mediaEntityTypeSchema.optional(),
   entity_id: z.string().uuid().optional(),
   media_category: mediaCategorySchema.optional(),
 });

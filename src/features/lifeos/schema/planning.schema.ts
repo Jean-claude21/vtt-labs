@@ -31,11 +31,11 @@ export const slotTypeSchema = z.enum([
   'event',
 ]);
 
-export const entityTypeSchema = z.enum(['routine_instance', 'task']);
+export const planningEntityTypeSchema = z.enum(['routine_instance', 'task']);
 
 export type PlanStatus = z.infer<typeof planStatusSchema>;
 export type SlotType = z.infer<typeof slotTypeSchema>;
-export type EntityType = z.infer<typeof entityTypeSchema>;
+export type PlanningEntityType = z.infer<typeof planningEntityTypeSchema>;
 
 // ============================================================================
 // GENERATE PLAN INPUT
@@ -100,7 +100,7 @@ export const planSlotSchema = z.object({
   start_time: z.string(),
   end_time: z.string(),
   slot_type: slotTypeSchema,
-  entity_type: entityTypeSchema.nullable(),
+  entity_type: planningEntityTypeSchema.nullable(),
   entity_id: z.string().uuid().nullable(),
   ai_reasoning: z.string().nullable(),
   sort_order: z.number(),
@@ -180,14 +180,14 @@ export const schedulingOutputSchema = z.object({
     start_time: z.string(),
     end_time: z.string(),
     slot_type: slotTypeSchema,
-    entity_type: entityTypeSchema.nullable(),
+    entity_type: planningEntityTypeSchema.nullable(),
     entity_id: z.string().uuid().nullable(),
     reasoning: z.string(),
     is_locked: z.boolean(),
   })),
   unplaced_items: z.array(z.object({
     entity_id: z.string().uuid(),
-    entity_type: entityTypeSchema,
+    entity_type: planningEntityTypeSchema,
     reason: z.string(),
   })),
   optimization_score: z.number().min(0).max(100),

@@ -23,7 +23,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -31,9 +30,7 @@ import {
   Link2,
   ListTodo,
   Loader2,
-  Check,
   Clock,
-  Unlink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/features/lifeos/schema/calendar.schema';

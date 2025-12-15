@@ -11,11 +11,10 @@ import { createSSRClient } from '@/lib/supabase/server';
 import { preferencesService } from '../services/preferences.service';
 import { 
   updatePreferencesSchema,
-  calendarViewSchema,
   type UserPreferences,
-  type CalendarView,
   type UpdatePreferencesInput,
 } from '../schema/preferences.schema';
+import { calendarViewSchema, type CalendarView } from '../schema/calendar.schema';
 import type { ActionResult } from '@/lib/types';
 
 /**

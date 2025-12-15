@@ -5,14 +5,7 @@
  */
 
 import { z } from 'zod';
-
-// ============================================================================
-// ENUMS
-// ============================================================================
-
-export const calendarViewSchema = z.enum(['day', 'week', 'month']);
-
-export const categoryMomentSchema = z.enum(['morning', 'noon', 'afternoon', 'evening', 'night']);
+import { calendarViewSchema } from './calendar.schema';
 
 // ============================================================================
 // TIME BLOCKS - User-defined time ranges for category moments
@@ -33,8 +26,6 @@ export const timeBlocksSchema = z.object({
 
 export type TimeRange = z.infer<typeof timeRangeSchema>;
 export type TimeBlocks = z.infer<typeof timeBlocksSchema>;
-
-export type CalendarView = z.infer<typeof calendarViewSchema>;
 
 // ============================================================================
 // PREFERENCES

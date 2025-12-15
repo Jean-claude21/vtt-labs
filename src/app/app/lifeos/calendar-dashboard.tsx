@@ -6,7 +6,6 @@
  * 
  * @module lifeos/calendar-dashboard
  */
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 'use client';
 
 import { useState, useTransition, useCallback, useMemo, useEffect } from 'react';
@@ -17,7 +16,7 @@ import { RoutineTasksDialog } from '@/features/lifeos/components/calendar/routin
 import { TaskForm } from '@/features/lifeos/components/tasks/task-form';
 import { getCalendarEvents } from '@/features/lifeos/actions/calendar.actions';
 import { getUnscheduledTasks, scheduleTask, createTask } from '@/features/lifeos/actions/tasks.actions';
-import { rescheduleRoutineInstance, createTaskFromRoutine } from '@/features/lifeos/actions/routines.actions';
+import { rescheduleRoutineInstance } from '@/features/lifeos/actions/routines.actions';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';

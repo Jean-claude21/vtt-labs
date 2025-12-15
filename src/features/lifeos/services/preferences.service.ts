@@ -10,8 +10,8 @@ import type { DbClient } from '@/lib/types';
 import type { 
   UserPreferences, 
   UpdatePreferencesInput,
-  CalendarView,
 } from '../schema/preferences.schema';
+import type { CalendarView } from '../schema/calendar.schema';
 
 export type ServiceResult<T> = {
   data: T | null;
