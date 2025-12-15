@@ -154,6 +154,54 @@ export async function startTask(
 }
 
 /**
+ * Update actual times for a task (manual entry)
+ */
+export async function updateTaskActualTimes(
+  taskId: string,
+  actualStart: string | null,
+  actualEnd: string | null
+): Promise<ActionResult<Task>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!taskId) {
+    return { data: null, error: 'ID de tâche requis' };
+  }
+
+  // Calculate actual_minutes if both times are provided
+  let actualMinutes: number | null = null;
+  if (actualStart && actualEnd) {
+    const startDate = new Date(actualStart);
+    const endDate = new Date(actualEnd);
+    actualMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_tasks')
+    .update({
+      actual_start: actualStart,
+      actual_end: actualEnd,
+      actual_minutes: actualMinutes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+/**
  * Complete a task (shortcut for updateTaskStatus with 'done')
  * Also records actual_end time
  */

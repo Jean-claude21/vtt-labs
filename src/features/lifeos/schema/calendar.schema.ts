@@ -72,6 +72,10 @@ export const calendarEventSchema = z.object({
   // Actual time tracking (for AI stats)
   actualStart: z.date().nullable().optional(),
   actualEnd: z.date().nullable().optional(),
+  
+  // Checklist progress (for routines)
+  checklistTotal: z.number().optional(),
+  checklistCompleted: z.number().optional(),
 });
 
 export type CalendarEvent = z.infer<typeof calendarEventSchema>;

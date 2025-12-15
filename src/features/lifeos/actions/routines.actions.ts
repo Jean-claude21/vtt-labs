@@ -458,3 +458,245 @@ export async function createTaskFromRoutine(
 
   return { data: { taskId: data }, error: null };
 }
+
+/**
+ * Toggle a checklist item for a routine instance
+ */
+export async function toggleChecklistItem(
+  instanceId: string,
+  itemId: string,
+  completed: boolean
+): Promise<ActionResult<string[]>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!instanceId || !itemId) {
+    return { data: null, error: 'IDs requis' };
+  }
+
+  // First, get current completed items
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: instance, error: fetchError } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .select('completed_checklist_items')
+    .eq('id', instanceId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (fetchError) {
+    return { data: null, error: fetchError.message };
+  }
+
+  const currentItems: string[] = instance?.completed_checklist_items || [];
+  let newItems: string[];
+
+  if (completed) {
+    // Add item if not already present
+    newItems = currentItems.includes(itemId) ? currentItems : [...currentItems, itemId];
+  } else {
+    // Remove item
+    newItems = currentItems.filter(id => id !== itemId);
+  }
+
+  // Update the instance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateError } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .update({
+      completed_checklist_items: newItems,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', instanceId)
+    .eq('user_id', user.id);
+
+  if (updateError) {
+    return { data: null, error: updateError.message };
+  }
+
+  return { data: newItems, error: null };
+}
+
+/**
+ * Get checklist items for a routine instance (with template data)
+ */
+export async function getRoutineChecklist(
+  instanceId: string
+): Promise<ActionResult<{
+  items: { id: string; label: string; order: number }[];
+  completedIds: string[];
+}>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .select(`
+      completed_checklist_items,
+      template:lifeos_routine_templates!inner(checklist_items)
+    `)
+    .eq('id', instanceId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  const template = data.template as { checklist_items: { id: string; label: string; order: number }[] };
+  const items = template?.checklist_items || [];
+  const completedIds = (data.completed_checklist_items as string[]) || [];
+
+  // Sort by order
+  items.sort((a, b) => a.order - b.order);
+
+  return { data: { items, completedIds }, error: null };
+}
+
+/**
+ * Add a new checklist item to a routine template (via instance)
+ * This adds the item to the template so it appears for all future instances
+ */
+export async function addChecklistItem(
+  instanceId: string,
+  label: string
+): Promise<ActionResult<{ id: string; label: string; order: number }>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // Get the instance to find the template_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: instance, error: instanceError } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .select('template_id')
+    .eq('id', instanceId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (instanceError || !instance) {
+    return { data: null, error: 'Instance non trouvée' };
+  }
+
+  // Get current checklist from template
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: template, error: templateError } = await (supabase as any)
+    .from('lifeos_routine_templates')
+    .select('checklist_items')
+    .eq('id', instance.template_id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (templateError) {
+    return { data: null, error: templateError.message };
+  }
+
+  const currentItems = (template?.checklist_items as { id: string; label: string; order: number }[]) || [];
+  
+  // Create new item
+  const newItem = {
+    id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    label: label.trim(),
+    order: currentItems.length + 1
+  };
+
+  const updatedItems = [...currentItems, newItem];
+
+  // Update template
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateError } = await (supabase as any)
+    .from('lifeos_routine_templates')
+    .update({ checklist_items: updatedItems })
+    .eq('id', instance.template_id)
+    .eq('user_id', user.id);
+
+  if (updateError) {
+    return { data: null, error: updateError.message };
+  }
+
+  return { data: newItem, error: null };
+}
+
+/**
+ * Update actual start/end times for a routine instance
+ * Used for tracking when the user actually performed the routine
+ */
+export async function updateRoutineActualTimes(
+  instanceId: string,
+  actualStart: string | null,
+  actualEnd: string | null
+): Promise<ActionResult<boolean>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // Build update object only with provided values
+  const updates: { actual_start?: string | null; actual_end?: string | null; updated_at: string } = {
+    updated_at: new Date().toISOString()
+  };
+  
+  if (actualStart !== undefined) {
+    updates.actual_start = actualStart;
+  }
+  if (actualEnd !== undefined) {
+    updates.actual_end = actualEnd;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .update(updates)
+    .eq('id', instanceId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: true, error: null };
+}
+
+/**
+ * Start a routine instance (record actual_start = now)
+ */
+export async function startRoutineInstance(
+  instanceId: string
+): Promise<ActionResult<boolean>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('lifeos_routine_instances')
+    .update({ 
+      actual_start: new Date().toISOString(),
+      status: 'in_progress',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', instanceId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: true, error: null };
+}

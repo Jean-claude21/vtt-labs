@@ -131,11 +131,21 @@ function calculateScheduledTimes(
 ): { start: string; end: string } | null {
   const blocks = timeBlocks || DEFAULT_TIME_BLOCKS;
   
-  // Priority 1: Exact time from constraints.timeSlot
+  // Priority 1: Exact time from constraints.timeSlot (new format)
   if (template.constraints?.timeSlot?.required && template.constraints.timeSlot.startTime) {
     return {
       start: template.constraints.timeSlot.startTime,
       end: template.constraints.timeSlot.endTime || addMinutes(template.constraints.timeSlot.startTime, 30),
+    };
+  }
+  
+  // Priority 1b: time_of_day + duration_minutes from constraints (legacy/seed format)
+  const constraintsAny = template.constraints as { time_of_day?: string; duration_minutes?: number } | undefined;
+  if (constraintsAny?.time_of_day) {
+    const durationMinutes = constraintsAny.duration_minutes || template.default_duration_minutes || 30;
+    return {
+      start: constraintsAny.time_of_day,
+      end: addMinutes(constraintsAny.time_of_day, durationMinutes),
     };
   }
   

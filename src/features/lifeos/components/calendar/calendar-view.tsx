@@ -35,6 +35,102 @@ import { cn } from '@/lib/utils';
 import type { CalendarEvent, CalendarView } from '@/features/lifeos/schema/calendar.schema';
 import type { Task } from '@/features/lifeos/schema/tasks.schema';
 
+/**
+ * Calculate column positions for overlapping events (Google Calendar style)
+ * Returns events with column index and total columns for their overlap group
+ */
+interface EventWithPosition extends CalendarEvent {
+  column: number;
+  totalColumns: number;
+}
+
+function calculateEventPositions(events: CalendarEvent[]): EventWithPosition[] {
+  // Filter out events with null start/end times
+  const validEvents = events.filter(e => e.start != null && e.end != null);
+  
+  if (validEvents.length === 0) return [];
+  if (validEvents.length === 1) {
+    return [{ ...validEvents[0], column: 0, totalColumns: 1 }];
+  }
+
+  // Sort by start time, then by duration (longer first)
+  const sorted = [...validEvents].sort((a, b) => {
+    const startDiff = a.start.getTime() - b.start.getTime();
+    if (startDiff !== 0) return startDiff;
+    // Longer events first (they span more)
+    const aDuration = a.end.getTime() - a.start.getTime();
+    const bDuration = b.end.getTime() - b.start.getTime();
+    return bDuration - aDuration;
+  });
+
+  // Find overlapping groups
+  const groups: CalendarEvent[][] = [];
+  let currentGroup: CalendarEvent[] = [];
+
+  for (const event of sorted) {
+    if (currentGroup.length === 0) {
+      currentGroup.push(event);
+    } else {
+      // Check if event overlaps with any event in current group
+      const overlaps = currentGroup.some(e => 
+        event.start < e.end && event.end > e.start
+      );
+      
+      if (overlaps) {
+        currentGroup.push(event);
+      } else {
+        // Start new group
+        groups.push(currentGroup);
+        currentGroup = [event];
+      }
+    }
+  }
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  // Assign columns within each group
+  const result: EventWithPosition[] = [];
+  
+  for (const group of groups) {
+    const columns: CalendarEvent[][] = [];
+    
+    for (const event of group) {
+      // Find first column where event doesn't overlap with existing events
+      let placed = false;
+      for (let colIndex = 0; colIndex < columns.length; colIndex++) {
+        const columnEvents = columns[colIndex];
+        const overlapsInColumn = columnEvents.some(e => 
+          event.start < e.end && event.end > e.start
+        );
+        
+        if (!overlapsInColumn) {
+          columns[colIndex].push(event);
+          result.push({ ...event, column: colIndex, totalColumns: 0 });
+          placed = true;
+          break;
+        }
+      }
+      
+      if (!placed) {
+        // Create new column
+        columns.push([event]);
+        result.push({ ...event, column: columns.length - 1, totalColumns: 0 });
+      }
+    }
+    
+    // Update totalColumns for all events in group
+    const totalCols = columns.length;
+    for (const event of result) {
+      if (group.some(e => e.id === event.id)) {
+        event.totalColumns = totalCols;
+      }
+    }
+  }
+
+  return result;
+}
+
 interface CalendarViewProps {
   events: CalendarEvent[];
   initialView?: CalendarView;
@@ -367,26 +463,42 @@ function DayView({
                     </div>
                   </div>
                 )}
-                {/* Events for this hour - handle overlaps */}
-                <div className="flex gap-1">
-                  {hourEvents.map((event) => (
-                    <EventBlock
-                      key={event.id}
-                      event={event}
-                      onClick={() => onEventClick?.(event)}
-                      draggable={!!onEventDrop}
-                      onDragStart={() => onEventDragStart?.(event)}
-                      onDragEnd={onEventDragEnd}
-                      onTimeShift={onTimeShift}
-                      onCreateTaskFromRoutine={onCreateTaskFromRoutine}
-                      style={{ 
-                        position: 'relative',
-                        flex: 1,
-                        maxWidth: hourEvents.length > 1 ? `${100 / hourEvents.length}%` : undefined 
-                      }}
-                    />
-                  ))}
-                </div>
+                {/* Events for this hour - handle overlaps with column layout */}
+                {(() => {
+                  const positionedEvents = calculateEventPositions(hourEvents);
+                  return (
+                    <div className="relative w-full h-full min-h-[60px]">
+                      {positionedEvents.map((event) => {
+                        const widthPercent = 100 / event.totalColumns;
+                        const leftPercent = event.column * widthPercent;
+                        return (
+                          <div
+                            key={event.id}
+                            style={{
+                              position: 'absolute',
+                              left: `${leftPercent}%`,
+                              width: `${widthPercent - 1}%`,
+                              top: 0,
+                              bottom: 0,
+                            }}
+                          >
+                            <EventBlock
+                              event={event}
+                              onClick={() => onEventClick?.(event)}
+                              draggable={!!onEventDrop}
+                              onDragStart={() => onEventDragStart?.(event)}
+                              onDragEnd={onEventDragEnd}
+                              onTimeShift={onTimeShift}
+                              onCreateTaskFromRoutine={onCreateTaskFromRoutine}
+                              isOverlapping={event.totalColumns > 1}
+                              style={{ height: '100%' }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
@@ -605,27 +717,43 @@ function WeekDayCell({
           <Plus className="h-3 w-3 text-muted-foreground" />
         </div>
       )}
-      {/* Events - handle overlaps */}
-      <div className="flex gap-0.5 h-full">
-        {dayEvents.map((event) => (
-          <EventBlock
-            key={event.id}
-            event={event}
-            compact
-            onClick={() => onEventClick?.(event)}
-            draggable={!!onEventDrop}
-            onDragStart={() => onEventDragStart?.(event)}
-            onDragEnd={onEventDragEnd}
-            onTimeShift={onTimeShift}
-            onCreateTaskFromRoutine={onCreateTaskFromRoutine}
-            style={{
-              position: 'relative',
-              flex: 1,
-              maxWidth: dayEvents.length > 1 ? `${100 / dayEvents.length}%` : undefined
-            }}
-          />
-        ))}
-      </div>
+      {/* Events - handle overlaps with column layout */}
+      {(() => {
+        const positionedEvents = calculateEventPositions(dayEvents);
+        return (
+          <div className="relative w-full h-full">
+            {positionedEvents.map((event) => {
+              const widthPercent = 100 / event.totalColumns;
+              const leftPercent = event.column * widthPercent;
+              return (
+                <div
+                  key={event.id}
+                  style={{
+                    position: 'absolute',
+                    left: `${leftPercent}%`,
+                    width: `${widthPercent - 1}%`,
+                    top: 0,
+                    bottom: 0,
+                  }}
+                >
+                  <EventBlock
+                    event={event}
+                    compact
+                    onClick={() => onEventClick?.(event)}
+                    draggable={!!onEventDrop}
+                    onDragStart={() => onEventDragStart?.(event)}
+                    onDragEnd={onEventDragEnd}
+                    onTimeShift={onTimeShift}
+                    onCreateTaskFromRoutine={onCreateTaskFromRoutine}
+                    isOverlapping={event.totalColumns > 1}
+                    style={{ height: '100%' }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -797,6 +925,7 @@ function EventBlock({
   onDragEnd,
   onTimeShift,
   onCreateTaskFromRoutine,
+  isOverlapping = false,
 }: Readonly<{
   event: CalendarEvent;
   compact?: boolean;
@@ -808,6 +937,7 @@ function EventBlock({
   onDragEnd?: () => void;
   onTimeShift?: (eventId: string, shiftMinutes: number) => void;
   onCreateTaskFromRoutine?: (instanceId: string) => void;
+  isOverlapping?: boolean;
 }>) {
   // Calculate top position - avoid nested ternary
   let topPosition: number | undefined;
@@ -846,12 +976,16 @@ function EventBlock({
         // Completed events: reduced opacity and visual indicator
         isCompleted && 'opacity-60',
         // Draggable cursor
-        draggable && 'cursor-grab active:cursor-grabbing'
+        draggable && 'cursor-grab active:cursor-grabbing',
+        // Overlapping indicator - orange/red left border
+        isOverlapping && 'border-l-4 border-l-orange-500'
       )}
       style={{
         backgroundColor: event.color || '#6B7280',
         color: 'white',
         top: topPosition,
+        // Add slight shadow for overlapping events to help differentiate
+        boxShadow: isOverlapping ? '2px 2px 4px rgba(0,0,0,0.2)' : undefined,
         ...style,
       }}
       onClick={(e) => {
@@ -867,6 +1001,17 @@ function EventBlock({
           "font-medium truncate",
           isCompleted && "line-through opacity-80"
         )}>{event.title}</span>
+        {/* Checklist progress indicator */}
+        {event.checklistTotal && event.checklistTotal > 0 && (
+          <span className={cn(
+            "ml-auto text-xs font-medium px-1 rounded",
+            event.checklistCompleted === event.checklistTotal 
+              ? "bg-green-500/30 text-green-200" 
+              : "bg-white/20"
+          )}>
+            {event.checklistCompleted || 0}/{event.checklistTotal}
+          </span>
+        )}
       </div>
       {/* Show time in compact mode if showTime=true, always show in non-compact */}
       {(showTime || !compact) && timeString && (

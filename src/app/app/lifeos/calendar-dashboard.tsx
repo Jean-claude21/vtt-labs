@@ -13,6 +13,7 @@ import { useState, useTransition, useCallback, useMemo, useEffect } from 'react'
 import { toast } from 'sonner';
 import { CalendarViewComponent } from '@/features/lifeos/components/calendar/calendar-view';
 import { EventTrackingDialog } from '@/features/lifeos/components/calendar/event-tracking-dialog';
+import { RoutineTasksDialog } from '@/features/lifeos/components/calendar/routine-tasks-dialog';
 import { TaskForm } from '@/features/lifeos/components/tasks/task-form';
 import { getCalendarEvents } from '@/features/lifeos/actions/calendar.actions';
 import { getUnscheduledTasks, scheduleTask, createTask } from '@/features/lifeos/actions/tasks.actions';
@@ -34,6 +35,7 @@ import {
   Clock,
   CalendarDays,
   AlertCircle,
+  AlertTriangle,
   Menu,
   ChevronDown,
   ChevronUp,
@@ -47,7 +49,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import type { CalendarEvent } from '@/features/lifeos/schema/calendar.schema';
+import type { CalendarEvent, Conflict } from '@/features/lifeos/schema/calendar.schema';
+import { calendarService } from '@/features/lifeos/services/calendar.service';
 import type { Domain } from '@/features/lifeos/schema/domains.schema';
 import type { Task } from '@/features/lifeos/schema/tasks.schema';
 
@@ -108,6 +111,10 @@ export function CalendarDashboard({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   
+  // Routine tasks dialog state (for managing linked tasks)
+  const [routineTasksDialogOpen, setRoutineTasksDialogOpen] = useState(false);
+  const [routineForTasks, setRoutineForTasks] = useState<CalendarEvent | null>(null);
+  
   // Quick task creation dialog state
   const [quickTaskDialogOpen, setQuickTaskDialogOpen] = useState(false);
   const [quickTaskSlot, setQuickTaskSlot] = useState<{ date: string; time: string } | null>(null);
@@ -151,6 +158,11 @@ export function CalendarDashboard({
       return true;
     });
   }, [events, filters]);
+
+  // Detect scheduling conflicts
+  const conflicts: Conflict[] = useMemo(() => {
+    return calendarService.detectConflicts(events);
+  }, [events]);
 
   // Handle date selection from mini calendar
   const handleDateSelect = useCallback((date: Date | undefined) => {
@@ -304,20 +316,20 @@ export function CalendarDashboard({
     loadEventsForDate(selectedDate);
   }, [events, selectedDate, loadEventsForDate]);
 
-  // Handle creating a task from a routine instance
-  const handleCreateTaskFromRoutine = useCallback(async (instanceId: string) => {
-    const result = await createTaskFromRoutine(instanceId);
-    
-    if (result.error) {
-      toast.error('Erreur', { description: result.error });
-      return;
+  // Handle opening the routine tasks dialog
+  const handleCreateTaskFromRoutine = useCallback((instanceId: string) => {
+    // Find the event for this instance
+    const event = events.find(e => e.entityId === instanceId && e.type === 'routine');
+    if (event) {
+      setRoutineForTasks(event);
+      setRoutineTasksDialogOpen(true);
+    } else {
+      toast.error('Routine non trouvée');
     }
+  }, [events]);
 
-    toast.success('Tâche créée', { 
-      description: 'Une tâche liée a été créée pour cette routine' 
-    });
-
-    // Reload events and tasks
+  // Handle routine tasks dialog complete
+  const handleRoutineTasksComplete = useCallback(() => {
     loadEventsForDate(selectedDate);
     refreshUnscheduledTasks();
   }, [selectedDate, loadEventsForDate, refreshUnscheduledTasks]);
@@ -492,21 +504,30 @@ export function CalendarDashboard({
           )}
         </Card>
 
-        {/* Tabbed content: Unscheduled Tasks / Filters */}
+        {/* Tabbed content: Unscheduled Tasks / Filters / Conflicts */}
         <Card className="flex-1 min-h-[300px] flex flex-col overflow-hidden">
           <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <TabsList className="w-full grid grid-cols-2 rounded-none border-b shrink-0">
-              <TabsTrigger value="tasks" className="gap-2">
-                <ListTodo className="h-4 w-4" />
-                À planifier
+            <TabsList className="w-full grid grid-cols-3 rounded-none border-b shrink-0">
+              <TabsTrigger value="tasks" className="gap-1 text-xs px-2">
+                <ListTodo className="h-3 w-3" />
+                Tâches
                 {unscheduledTasks.length > 0 && (
                   <Badge variant="secondary" className="ml-1 text-xs">
                     {unscheduledTasks.length}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="filters" className="gap-2">
-                <Filter className="h-4 w-4" />
+              <TabsTrigger value="conflicts" className="gap-1 text-xs px-2">
+                <AlertTriangle className="h-3 w-3" />
+                Conflits
+                {conflicts.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs">
+                    {conflicts.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="filters" className="gap-1 text-xs px-2">
+                <Filter className="h-3 w-3" />
                 Filtres
               </TabsTrigger>
             </TabsList>
@@ -591,6 +612,105 @@ export function CalendarDashboard({
                       Actualiser
                     </Button>
                   </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
+            {/* Conflicts Tab */}
+            <TabsContent value="conflicts" className="flex-1 m-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-3">
+                  {conflicts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm font-medium">Aucun conflit détecté</p>
+                      <p className="text-xs mt-1">Votre planning est bien organisé !</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} d&apos;horaires détecté{conflicts.length > 1 ? 's' : ''}
+                      </p>
+                      {conflicts.map((conflict) => (
+                        <div
+                          key={conflict.id}
+                          className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 space-y-2"
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">
+                                Chevauchement de {conflict.overlapMinutes} min
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(conflict.date).toLocaleDateString('fr-FR', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'short'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1.5 pl-6">
+                            {/* Event 1 */}
+                            <div className="flex items-center gap-2 text-xs">
+                              <div 
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: conflict.event1.color || '#6B7280' }}
+                              />
+                              <span className="truncate font-medium">{conflict.event1.title}</span>
+                              <span className="text-muted-foreground shrink-0">
+                                {conflict.event1.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                -
+                                {conflict.event1.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            
+                            {/* Event 2 */}
+                            <div className="flex items-center gap-2 text-xs">
+                              <div 
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: conflict.event2.color || '#6B7280' }}
+                              />
+                              <span className="truncate font-medium">{conflict.event2.title}</span>
+                              <span className="text-muted-foreground shrink-0">
+                                {conflict.event2.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                -
+                                {conflict.event2.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Quick actions */}
+                          <div className="flex gap-2 pt-1 pl-6">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs flex-1"
+                              onClick={() => {
+                                setSelectedEvent(conflict.event1);
+                                setTrackingDialogOpen(true);
+                              }}
+                            >
+                              Modifier 1
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs flex-1"
+                              onClick={() => {
+                                setSelectedEvent(conflict.event2);
+                                setTrackingDialogOpen(true);
+                              }}
+                            >
+                              Modifier 2
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -801,6 +921,20 @@ export function CalendarDashboard({
         open={trackingDialogOpen}
         onOpenChange={setTrackingDialogOpen}
         onEventUpdated={handleTrackingComplete}
+        onOpenRoutineTasks={selectedEvent?.type === 'routine' ? () => {
+          // Fermer le tracking dialog et ouvrir le routine tasks dialog
+          setTrackingDialogOpen(false);
+          setRoutineForTasks(selectedEvent);
+          setRoutineTasksDialogOpen(true);
+        } : undefined}
+      />
+
+      {/* Routine Tasks Dialog */}
+      <RoutineTasksDialog
+        event={routineForTasks}
+        open={routineTasksDialogOpen}
+        onOpenChange={setRoutineTasksDialogOpen}
+        onTaskCreated={handleRoutineTasksComplete}
       />
 
       {/* Quick Task Creation Dialog */}

@@ -38,6 +38,10 @@ import {
   Target,
   Calendar,
   Loader2,
+  CheckSquare,
+  Square,
+  ListTodo,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/features/lifeos/schema/calendar.schema';
@@ -46,12 +50,18 @@ import {
   skipRoutineInstance,
   partialRoutineInstance,
   rescheduleRoutineInstance,
+  toggleChecklistItem,
+  getRoutineChecklist,
+  addChecklistItem,
+  updateRoutineActualTimes,
+  startRoutineInstance,
 } from '@/features/lifeos/actions/routines.actions';
 import { 
   completeTask, 
   updateTaskStatus,
   scheduleTask,
   startTask,
+  updateTaskActualTimes,
 } from '@/features/lifeos/actions/tasks.actions';
 
 interface EventTrackingDialogProps {
@@ -59,6 +69,7 @@ interface EventTrackingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEventUpdated?: () => void;
+  onOpenRoutineTasks?: () => void;
 }
 
 // Mood emoji mapping
@@ -89,6 +100,7 @@ export function EventTrackingDialog({
   open,
   onOpenChange,
   onEventUpdated,
+  onOpenRoutineTasks,
 }: Readonly<EventTrackingDialogProps>) {
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<string>('quick');
@@ -105,6 +117,31 @@ export function EventTrackingDialog({
   const [scheduleDate, setScheduleDate] = useState<string>('');
   const [scheduleStartTime, setScheduleStartTime] = useState<string>('');
   const [scheduleEndTime, setScheduleEndTime] = useState<string>('');
+  
+  // Actual time state (for manual entry)
+  const [actualStartTime, setActualStartTime] = useState<string>('');
+  const [actualEndTime, setActualEndTime] = useState<string>('');
+  
+  // Checklist state (for routines)
+  const [checklistItems, setChecklistItems] = useState<{ id: string; label: string; order: number }[]>([]);
+  const [completedChecklistIds, setCompletedChecklistIds] = useState<string[]>([]);
+  const [checklistLoading, setChecklistLoading] = useState(false);
+  const [newChecklistItem, setNewChecklistItem] = useState<string>('');
+  const [isAddingChecklistItem, setIsAddingChecklistItem] = useState(false);
+
+  // Load checklist when dialog opens for a routine with checklist (or routine without items yet)
+  React.useEffect(() => {
+    if (open && event && event.type === 'routine') {
+      setChecklistLoading(true);
+      getRoutineChecklist(event.entityId).then((result) => {
+        if (result.data) {
+          setChecklistItems(result.data.items);
+          setCompletedChecklistIds(result.data.completedIds);
+        }
+        setChecklistLoading(false);
+      });
+    }
+  }, [open, event]);
 
   // Reset form when dialog opens
   React.useEffect(() => {
@@ -124,6 +161,18 @@ export function EventTrackingDialog({
       }
       if (event.end) {
         setScheduleEndTime(event.end.toTimeString().substring(0, 5));
+      }
+      
+      // Initialize actual times from event (if already tracked)
+      if (event.actualStart) {
+        setActualStartTime(event.actualStart.toTimeString().substring(0, 5));
+      } else {
+        setActualStartTime('');
+      }
+      if (event.actualEnd) {
+        setActualEndTime(event.actualEnd.toTimeString().substring(0, 5));
+      } else {
+        setActualEndTime('');
       }
     }
   }, [open, event]);
@@ -276,6 +325,115 @@ export function EventTrackingDialog({
     });
   };
 
+  // Handle checklist item toggle
+  const handleToggleChecklistItem = async (itemId: string, completed: boolean) => {
+    if (!event.entityId) return;
+
+    // Optimistic update
+    setCompletedChecklistIds(prev => 
+      completed 
+        ? [...prev, itemId]
+        : prev.filter(id => id !== itemId)
+    );
+
+    const result = await toggleChecklistItem(event.entityId, itemId, completed);
+    
+    if (result.error) {
+      // Revert on error
+      setCompletedChecklistIds(prev => 
+        completed 
+          ? prev.filter(id => id !== itemId)
+          : [...prev, itemId]
+      );
+      toast.error('Erreur', { description: result.error });
+      return;
+    }
+
+    // Sync with server response
+    if (result.data) {
+      setCompletedChecklistIds(result.data);
+    }
+  };
+
+  // Handle adding a new checklist item
+  const handleAddChecklistItem = async () => {
+    if (!event.entityId || !newChecklistItem.trim()) return;
+
+    setIsAddingChecklistItem(true);
+    
+    const result = await addChecklistItem(event.entityId, newChecklistItem.trim());
+    
+    if (result.error) {
+      toast.error('Erreur', { description: result.error });
+      setIsAddingChecklistItem(false);
+      return;
+    }
+
+    if (result.data) {
+      // Add to local list
+      setChecklistItems(prev => [...prev, result.data!]);
+      setNewChecklistItem('');
+      toast.success('Étape ajoutée');
+    }
+    
+    setIsAddingChecklistItem(false);
+  };
+
+  // Handle saving actual times (manual entry) - works for both tasks and routines
+  const handleSaveActualTimes = async () => {
+    if (!event.entityId) return;
+    
+    // Build ISO datetime from date + time
+    const dateStr = scheduleDate || event.start?.toISOString().split('T')[0];
+    if (!dateStr) {
+      toast.error('Date requise');
+      return;
+    }
+
+    const actualStartISO = actualStartTime ? `${dateStr}T${actualStartTime}:00` : null;
+    const actualEndISO = actualEndTime ? `${dateStr}T${actualEndTime}:00` : null;
+
+    startTransition(async () => {
+      let result;
+      
+      if (isTask) {
+        result = await updateTaskActualTimes(event.entityId, actualStartISO, actualEndISO);
+      } else if (isRoutine) {
+        result = await updateRoutineActualTimes(event.entityId, actualStartISO, actualEndISO);
+      } else {
+        toast.error('Type d\'événement non supporté');
+        return;
+      }
+
+      if (result.error) {
+        toast.error('Erreur', { description: result.error });
+        return;
+      }
+
+      toast.success('Temps réels enregistrés');
+      onEventUpdated?.();
+    });
+  };
+
+  // Handle starting a routine (record actual_start = now)
+  const handleStartRoutine = async () => {
+    if (!event.entityId || !isRoutine) return;
+
+    startTransition(async () => {
+      const result = await startRoutineInstance(event.entityId);
+
+      if (result.error) {
+        toast.error('Erreur', { description: result.error });
+        return;
+      }
+
+      toast.success('Routine démarrée!');
+      // Set local state to show the start time
+      setActualStartTime(new Date().toTimeString().substring(0, 5));
+      onEventUpdated?.();
+    });
+  };
+
   // Handle task status change
   const handleTaskStatus = async (status: 'in_progress' | 'cancelled') => {
     if (!event.entityId) return;
@@ -322,8 +480,21 @@ export function EventTrackingDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={cn(
+            "grid w-full",
+            isRoutine ? "grid-cols-4" : "grid-cols-3"
+          )}>
             <TabsTrigger value="quick">Actions</TabsTrigger>
+            {isRoutine && (
+              <TabsTrigger value="checklist" className="gap-1">
+                Étapes
+                {checklistItems.length > 0 && (
+                  <span className="text-xs opacity-70">
+                    {completedChecklistIds.length}/{checklistItems.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="schedule">Horaires</TabsTrigger>
             <TabsTrigger value="details">Détails</TabsTrigger>
           </TabsList>
@@ -331,44 +502,61 @@ export function EventTrackingDialog({
           {/* Quick Actions Tab */}
           <TabsContent value="quick" className="space-y-4 mt-4">
             {isRoutine && (
-              <div className="grid grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  className="flex flex-col h-auto py-4 hover:bg-green-50 hover:border-green-500 hover:text-green-700"
-                  onClick={() => handleCompleteRoutine('completed')}
-                  disabled={isPending}
-                >
-                  {isPending ? (
-                    <Loader2 className="h-6 w-6 mb-2 animate-spin" />
-                  ) : (
-                    <Check className="h-6 w-6 mb-2 text-green-600" />
-                  )}
-                  <span className="text-sm font-medium">Terminé</span>
-                </Button>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-auto py-4 hover:bg-green-50 hover:border-green-500 hover:text-green-700"
+                    onClick={() => handleCompleteRoutine('completed')}
+                    disabled={isPending}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-6 w-6 mb-2 animate-spin" />
+                    ) : (
+                      <Check className="h-6 w-6 mb-2 text-green-600" />
+                    )}
+                    <span className="text-sm font-medium">Terminé</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-auto py-4 hover:bg-yellow-50 hover:border-yellow-500 hover:text-yellow-700"
+                    onClick={() => handleCompleteRoutine('partial')}
+                    disabled={isPending}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-6 w-6 mb-2 animate-spin" />
+                    ) : (
+                      <Target className="h-6 w-6 mb-2 text-yellow-600" />
+                    )}
+                    <span className="text-sm font-medium">Partiel</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-auto py-4 hover:bg-gray-100 hover:border-gray-400"
+                    onClick={() => setActiveTab('skip')}
+                    disabled={isPending}
+                  >
+                    <SkipForward className="h-6 w-6 mb-2 text-gray-500" />
+                    <span className="text-sm font-medium">Sauter</span>
+                  </Button>
+                </div>
                 
-                <Button
-                  variant="outline"
-                  className="flex flex-col h-auto py-4 hover:bg-yellow-50 hover:border-yellow-500 hover:text-yellow-700"
-                  onClick={() => handleCompleteRoutine('partial')}
-                  disabled={isPending}
-                >
-                  {isPending ? (
-                    <Loader2 className="h-6 w-6 mb-2 animate-spin" />
-                  ) : (
-                    <Target className="h-6 w-6 mb-2 text-yellow-600" />
-                  )}
-                  <span className="text-sm font-medium">Partiel</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="flex flex-col h-auto py-4 hover:bg-gray-100 hover:border-gray-400"
-                  onClick={() => setActiveTab('skip')}
-                  disabled={isPending}
-                >
-                  <SkipForward className="h-6 w-6 mb-2 text-gray-500" />
-                  <span className="text-sm font-medium">Sauter</span>
-                </Button>
+                {/* Bouton pour gérer les tâches liées */}
+                {onOpenRoutineTasks && (
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onOpenRoutineTasks();
+                    }}
+                  >
+                    <ListTodo className="h-4 w-4" />
+                    <span>Gérer les tâches liées</span>
+                  </Button>
+                )}
               </div>
             )}
 
@@ -418,6 +606,104 @@ export function EventTrackingDialog({
               </div>
             )}
           </TabsContent>
+
+          {/* Checklist Tab - for routines (always shown for routines to allow adding items) */}
+          {isRoutine && (
+            <TabsContent value="checklist" className="space-y-4 mt-4">
+              {checklistLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Progress bar (only if items exist) */}
+                  {checklistItems.length > 0 && (
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ 
+                            width: `${(completedChecklistIds.length / checklistItems.length) * 100}%` 
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {completedChecklistIds.length}/{checklistItems.length}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Checklist items */}
+                  {checklistItems.map((item) => {
+                    const isChecked = completedChecklistIds.includes(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleToggleChecklistItem(item.id, !isChecked)}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                          isChecked 
+                            ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800" 
+                            : "bg-card hover:bg-muted/50"
+                        )}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="h-5 w-5 text-green-600 shrink-0" />
+                        ) : (
+                          <Square className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                        <span className={cn(
+                          "text-sm",
+                          isChecked && "line-through text-muted-foreground"
+                        )}>
+                          {item.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  
+                  {checklistItems.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4 text-sm">
+                      Aucune étape configurée. Ajoutez-en une ci-dessous.
+                    </p>
+                  )}
+
+                  {/* Add new item form */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Input
+                      placeholder="Nouvelle étape..."
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newChecklistItem.trim()) {
+                          e.preventDefault();
+                          handleAddChecklistItem();
+                        }
+                      }}
+                      disabled={isAddingChecklistItem}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={handleAddChecklistItem}
+                      disabled={isAddingChecklistItem || !newChecklistItem.trim()}
+                    >
+                      {isAddingChecklistItem ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Les étapes ajoutées seront disponibles pour toutes les occurrences futures.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           {/* Schedule Tab - Modify times */}
           <TabsContent value="schedule" className="space-y-4 mt-4">
@@ -480,38 +766,68 @@ export function EventTrackingDialog({
                 </div>
               )}
               
-              {/* Actual vs Scheduled comparison (for tasks) */}
-              {isTask && (event.actualStart || event.actualEnd) && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium text-sm">
-                    <Timer className="h-4 w-4" />
-                    Temps réel
+              {/* Actual times section (for tasks and routines) - Editable */}
+              {(isTask || isRoutine) && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium text-sm">
+                      <Timer className="h-4 w-4" />
+                      Temps réel
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Planifié: {formatTime(event.start)} - {formatTime(event.end)}
+                    </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Planifié:</span>
-                      <div className="font-medium">
-                        {formatTime(event.start)} - {formatTime(event.end)}
-                      </div>
+                  {/* Quick start button for routines */}
+                  {isRoutine && !actualStartTime && event.status !== 'completed' && event.status !== 'skipped' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 text-green-700 border-green-300 hover:bg-green-50"
+                      onClick={handleStartRoutine}
+                      disabled={isPending}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Timer className="h-4 w-4" />
+                      )}
+                      Démarrer maintenant
+                    </Button>
+                  )}
+                  
+                  {/* Editable actual times */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Début réel</Label>
+                      <Input
+                        type="time"
+                        value={actualStartTime}
+                        onChange={(e) => setActualStartTime(e.target.value)}
+                        className="h-8 text-sm"
+                        placeholder="--:--"
+                      />
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Réel:</span>
-                      <div className="font-medium text-blue-600 dark:text-blue-400">
-                        {event.actualStart ? formatTime(event.actualStart) : '--:--'}
-                        {' - '}
-                        {event.actualEnd ? formatTime(event.actualEnd) : '...'}
-                      </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Fin réelle</Label>
+                      <Input
+                        type="time"
+                        value={actualEndTime}
+                        onChange={(e) => setActualEndTime(e.target.value)}
+                        className="h-8 text-sm"
+                        placeholder="--:--"
+                      />
                     </div>
                   </div>
                   
-                  {/* Show difference */}
-                  {event.actualStart && (
-                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2">
+                  {/* Show difference if actual times are set */}
+                  {actualStartTime && (
+                    <div className="text-xs text-muted-foreground border-t border-blue-200 dark:border-blue-800 pt-2">
                       {(() => {
-                        const plannedStart = event.start.getTime();
-                        const actualStart = event.actualStart.getTime();
-                        const diffMinutes = Math.round((actualStart - plannedStart) / 60000);
+                        const [plannedH, plannedM] = (event.start?.toTimeString().substring(0, 5) || '00:00').split(':').map(Number);
+                        const [actualH, actualM] = actualStartTime.split(':').map(Number);
+                        const diffMinutes = (actualH * 60 + actualM) - (plannedH * 60 + plannedM);
                         
                         if (Math.abs(diffMinutes) < 5) {
                           return <span className="text-green-600">✓ Commencé à l&apos;heure</span>;
@@ -530,6 +846,18 @@ export function EventTrackingDialog({
                       })()}
                     </div>
                   )}
+                  
+                  {/* Save actual times button */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleSaveActualTimes}
+                    disabled={isPending || (!actualStartTime && !actualEndTime)}
+                  >
+                    {isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                    Enregistrer temps réels
+                  </Button>
                 </div>
               )}
               
@@ -543,7 +871,7 @@ export function EventTrackingDialog({
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Clock className="h-4 w-4 mr-2" />
-                Enregistrer les horaires
+                Enregistrer les horaires planifiés
               </Button>
             </div>
           </TabsContent>

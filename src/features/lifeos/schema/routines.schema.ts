@@ -86,6 +86,18 @@ export const recurrenceConfigSchema = z.object({
 export type RecurrenceConfig = z.infer<typeof recurrenceConfigSchema>;
 
 // ============================================================================
+// CHECKLIST ITEM SCHEMA (for routine sub-tasks)
+// ============================================================================
+
+export const checklistItemSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().min(1).max(100),
+  order: z.number().int().min(0),
+});
+
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;
+
+// ============================================================================
 // CREATE ROUTINE TEMPLATE
 // ============================================================================
 
@@ -189,6 +201,7 @@ export const routineTemplateSchema = z.object({
   priority: prioritySchema,
   is_flexible: z.boolean(),
   is_active: z.boolean(),
+  checklist_items: z.array(checklistItemSchema).default([]),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -214,6 +227,8 @@ export const routineInstanceSchema = z.object({
   notes: z.string().nullable(),
   // Task linkage
   linked_task_id: z.string().uuid().nullable().optional(),
+  // Checklist progress
+  completed_checklist_items: z.array(z.string().uuid()).default([]),
   created_at: z.string(),
   updated_at: z.string(),
 });

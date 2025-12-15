@@ -39,6 +39,7 @@ export const calendarService = {
             is_flexible,
             priority,
             domain_id,
+            checklist_items,
             domain:lifeos_domains(id, name, color, icon)
           )
         `)
@@ -78,6 +79,7 @@ export const calendarService = {
           is_flexible: boolean;
           priority: string;
           domain_id: string | null;
+          checklist_items: { id: string; label: string; order: number }[] | null;
           domain: { id: string; name: string; color: string; icon: string } | null;
         };
 
@@ -89,6 +91,7 @@ export const calendarService = {
             category_type: template?.category_type,
             is_flexible: template?.is_flexible ?? true,
             priority: template?.priority || 'medium',
+            checklist_items: template?.checklist_items || [],
           },
           domain: template?.domain || null,
         };
@@ -124,6 +127,7 @@ export const calendarService = {
         category_type: string | null;
         is_flexible: boolean;
         priority: string;
+        checklist_items?: { id: string; label: string; order: number }[];
       };
       const domain = instance.domain as {
         id: string;
@@ -131,6 +135,12 @@ export const calendarService = {
         color: string;
         icon: string;
       } | null;
+
+      // Checklist progress
+      const checklistItems = template?.checklist_items || [];
+      const completedItems = (instance.completed_checklist_items as string[]) || [];
+      const checklistTotal = checklistItems.length;
+      const checklistCompleted = completedItems.length;
 
       // Calculate start/end times from scheduled_start/scheduled_end
       const scheduledDate = instance.scheduled_date;
@@ -169,6 +179,10 @@ export const calendarService = {
         priority: template?.priority as 'high' | 'medium' | 'low',
         isFlexible: template?.is_flexible ?? true,
         projectName: null,
+        checklistTotal: checklistTotal > 0 ? checklistTotal : undefined,
+        checklistCompleted: checklistTotal > 0 ? checklistCompleted : undefined,
+        actualStart: instance.actual_start ? new Date(instance.actual_start) : null,
+        actualEnd: instance.actual_end ? new Date(instance.actual_end) : null,
       });
     }
 

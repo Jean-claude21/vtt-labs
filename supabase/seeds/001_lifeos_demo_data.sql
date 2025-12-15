@@ -53,24 +53,30 @@ BEGIN
   -- ========================================================================
   -- 2. SEED ROUTINE TEMPLATES
   -- ========================================================================
-  INSERT INTO lifeos_routine_templates (user_id, domain_id, name, description, category_moment, category_type, recurrence_rule, recurrence_config, priority, is_flexible, is_active, constraints)
+  INSERT INTO lifeos_routine_templates (user_id, domain_id, name, description, category_moment, category_type, recurrence_rule, recurrence_config, priority, is_flexible, is_active, constraints, checklist_items)
   VALUES
     -- Morning routines
-    (p_user_id, v_domain_spirituality, 'Méditation matinale', 'Prendre 15 minutes pour méditer et centrer mon esprit', 'morning', 'spiritual', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', false, true, '{"duration_minutes": 15, "time_of_day": "06:30"}'),
-    (p_user_id, v_domain_health, 'Exercice physique', 'Session de sport ou yoga pour bien démarrer la journée', 'morning', 'health', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', true, true, '{"duration_minutes": 45, "time_of_day": "07:00"}'),
-    (p_user_id, v_domain_learning, 'Lecture développement', 'Lire 20 pages d''un livre de développement personnel', 'morning', 'learning', 'daily', '{"days": [1,2,3,4,5]}', 'medium', true, true, '{"duration_minutes": 30, "time_of_day": "08:00"}'),
+    (p_user_id, v_domain_spirituality, 'Méditation matinale', 'Prendre 15 minutes pour méditer et centrer mon esprit', 'morning', 'spiritual', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', false, true, '{"duration_minutes": 15, "time_of_day": "06:30"}',
+     '[{"id": "med-1", "label": "Préparer espace", "order": 1}, {"id": "med-2", "label": "Respiration 3min", "order": 2}, {"id": "med-3", "label": "Méditation 10min", "order": 3}]'::jsonb),
+    (p_user_id, v_domain_health, 'Exercice physique', 'Session de sport ou yoga pour bien démarrer la journée', 'morning', 'health', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', true, true, '{"duration_minutes": 45, "time_of_day": "07:00"}',
+     '[{"id": "exo-1", "label": "Échauffement", "order": 1}, {"id": "exo-2", "label": "Cardio/Muscu 30min", "order": 2}, {"id": "exo-3", "label": "Étirements", "order": 3}, {"id": "exo-4", "label": "Douche froide", "order": 4}]'::jsonb),
+    (p_user_id, v_domain_learning, 'Lecture développement', 'Lire 20 pages d''un livre de développement personnel', 'morning', 'learning', 'daily', '{"days": [1,2,3,4,5]}', 'medium', true, true, '{"duration_minutes": 30, "time_of_day": "08:00"}', NULL),
     
     -- Afternoon routines
-    (p_user_id, v_domain_career, 'Deep Work Session', 'Session de travail concentré sur les tâches importantes', 'afternoon', 'professional', 'weekdays', '{"days": [1,2,3,4,5]}', 'high', false, true, '{"duration_minutes": 90, "time_of_day": "14:00"}'),
+    (p_user_id, v_domain_career, 'Deep Work Session', 'Session de travail concentré sur les tâches importantes', 'afternoon', 'professional', 'weekdays', '{"days": [1,2,3,4,5]}', 'high', false, true, '{"duration_minutes": 90, "time_of_day": "14:00"}',
+     '[{"id": "dw-1", "label": "Mode avion", "order": 1}, {"id": "dw-2", "label": "3 priorités", "order": 2}, {"id": "dw-3", "label": "Focus 45min", "order": 3}, {"id": "dw-4", "label": "Pause 5min", "order": 4}, {"id": "dw-5", "label": "Focus 40min", "order": 5}]'::jsonb),
     
     -- Evening routines
-    (p_user_id, v_domain_relations, 'Temps famille/amis', 'Moment de qualité avec les proches', 'evening', 'personal', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', true, true, '{"duration_minutes": 60, "time_of_day": "19:00"}'),
-    (p_user_id, v_domain_spirituality, 'Gratitude journal', 'Écrire 3 choses pour lesquelles je suis reconnaissant', 'night', 'spiritual', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'medium', false, true, '{"duration_minutes": 10, "time_of_day": "21:30"}'),
-    (p_user_id, v_domain_health, 'Routine sommeil', 'Préparer le corps et l''esprit pour un sommeil réparateur', 'night', 'health', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', false, true, '{"duration_minutes": 30, "time_of_day": "22:00"}'),
+    (p_user_id, v_domain_relations, 'Temps famille/amis', 'Moment de qualité avec les proches', 'evening', 'personal', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', true, true, '{"duration_minutes": 60, "time_of_day": "19:00"}', NULL),
+    (p_user_id, v_domain_spirituality, 'Gratitude journal', 'Écrire 3 choses pour lesquelles je suis reconnaissant', 'night', 'spiritual', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'medium', false, true, '{"duration_minutes": 10, "time_of_day": "21:30"}',
+     '[{"id": "grat-1", "label": "3 gratitudes", "order": 1}, {"id": "grat-2", "label": "1 réussite", "order": 2}, {"id": "grat-3", "label": "Intention demain", "order": 3}]'::jsonb),
+    (p_user_id, v_domain_health, 'Routine sommeil', 'Préparer le corps et l''esprit pour un sommeil réparateur', 'night', 'health', 'daily', '{"days": [1,2,3,4,5,6,7]}', 'high', false, true, '{"duration_minutes": 30, "time_of_day": "22:00"}',
+     '[{"id": "sleep-1", "label": "Éteindre écrans", "order": 1}, {"id": "sleep-2", "label": "Préparer affaires", "order": 2}, {"id": "sleep-3", "label": "Skincare", "order": 3}, {"id": "sleep-4", "label": "Lecture 10min", "order": 4}]'::jsonb),
     
     -- Weekly routines
-    (p_user_id, v_domain_environment, 'Revue hebdomadaire', 'Faire le point sur la semaine et planifier la suivante', 'afternoon', 'personal', 'weekly', '{"days": [7]}', 'high', false, true, '{"duration_minutes": 60, "time_of_day": "16:00"}'),
-    (p_user_id, v_domain_finance, 'Check finances', 'Vérifier les comptes et le budget', 'morning', 'personal', 'weekly', '{"days": [7]}', 'medium', true, true, '{"duration_minutes": 30, "time_of_day": "10:00"}');
+    (p_user_id, v_domain_environment, 'Revue hebdomadaire', 'Faire le point sur la semaine et planifier la suivante', 'afternoon', 'personal', 'weekly', '{"days": [7]}', 'high', false, true, '{"duration_minutes": 60, "time_of_day": "16:00"}',
+     '[{"id": "rev-1", "label": "Revoir objectifs", "order": 1}, {"id": "rev-2", "label": "Célébrer victoires", "order": 2}, {"id": "rev-3", "label": "Identifier blocages", "order": 3}, {"id": "rev-4", "label": "Planifier semaine", "order": 4}]'::jsonb),
+    (p_user_id, v_domain_finance, 'Check finances', 'Vérifier les comptes et le budget', 'morning', 'personal', 'weekly', '{"days": [7]}', 'medium', true, true, '{"duration_minutes": 30, "time_of_day": "10:00"}', NULL);
 
   -- ========================================================================
   -- 3. SEED SAMPLE PROJECT
