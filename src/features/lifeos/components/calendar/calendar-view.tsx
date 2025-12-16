@@ -970,8 +970,94 @@ function EventBlock({
     ? `${event.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - ${event.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
-  // Check if event is completed
+  // Determine event state for styling
   const isCompleted = event.isCompleted || event.status === 'done' || event.status === 'completed';
+  const isSkipped = event.status === 'skipped';
+  const isInProgress = event.status === 'in_progress';
+  const isPending = event.status === 'pending' || event.status === 'todo';
+  
+  // Check if overdue (past time and not completed/skipped)
+  const now = new Date();
+  const isOverdue = event.end && event.end < now && !isCompleted && !isSkipped && !isInProgress;
+  
+  // Check if currently happening
+  const isCurrentlyHappening = event.start && event.end && event.start <= now && now <= event.end && !isCompleted;
+
+  // Get status icon
+  const getStatusIcon = () => {
+    if (isCompleted) return '✓';
+    if (isSkipped) return '⏭';
+    if (isInProgress || isCurrentlyHappening) return '▶';
+    if (isOverdue) return '⚠';
+    if (isPending) return '○';
+    return null;
+  };
+
+  // Get status-based styles
+  const getStatusStyles = (): { className: string; style: React.CSSProperties } => {
+    const baseColor = event.color || '#6B7280';
+    
+    if (isCompleted) {
+      return {
+        className: 'opacity-50',
+        style: { 
+          backgroundColor: baseColor,
+          filter: 'grayscale(30%)',
+        },
+      };
+    }
+    
+    if (isSkipped) {
+      return {
+        className: 'opacity-40 italic',
+        style: { 
+          backgroundColor: '#9CA3AF', // gray
+          borderStyle: 'dashed',
+        },
+      };
+    }
+    
+    if (isInProgress || isCurrentlyHappening) {
+      return {
+        className: 'ring-2 ring-offset-1 ring-green-400 animate-pulse',
+        style: { 
+          backgroundColor: baseColor,
+          borderLeft: '4px solid #22C55E',
+        },
+      };
+    }
+    
+    if (isOverdue) {
+      return {
+        className: 'ring-2 ring-red-400/50',
+        style: { 
+          backgroundColor: baseColor,
+          borderLeft: '4px solid #EF4444',
+          opacity: 0.85,
+        },
+      };
+    }
+    
+    // Pending (future) - subtle dashed border
+    if (isPending) {
+      return {
+        className: '',
+        style: { 
+          backgroundColor: baseColor,
+          borderLeft: '3px dashed rgba(255,255,255,0.4)',
+        },
+      };
+    }
+    
+    // Default
+    return {
+      className: '',
+      style: { backgroundColor: baseColor },
+    };
+  };
+
+  const statusStyles = getStatusStyles();
+  const statusIcon = getStatusIcon();
 
   const eventButton = (
     <button
@@ -980,22 +1066,21 @@ function EventBlock({
       onDragStart={draggable ? handleDragStart : undefined}
       onDragEnd={draggable ? handleDragEnd : undefined}
       className={cn(
-        'rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden text-left w-full',
+        'rounded px-2 py-1 cursor-pointer hover:opacity-90 transition-all overflow-hidden text-left w-full',
         compact ? 'text-xs' : 'text-sm',
         !style && 'absolute left-1 right-1',
-        // Completed events: reduced opacity and visual indicator
-        isCompleted && 'opacity-60',
         // Draggable cursor
         draggable && 'cursor-grab active:cursor-grabbing',
-        // Overlapping indicator - orange/red left border
-        isOverlapping && 'border-l-4 border-l-orange-500'
+        // Overlapping indicator
+        isOverlapping && 'shadow-md',
+        // Status-based classes
+        statusStyles.className
       )}
       style={{
-        backgroundColor: event.color || '#6B7280',
         color: 'white',
         top: topPosition,
-        // Add slight shadow for overlapping events to help differentiate
         boxShadow: isOverlapping ? '2px 2px 4px rgba(0,0,0,0.2)' : undefined,
+        ...statusStyles.style,
         ...style,
       }}
       onClick={(e) => {
@@ -1004,17 +1089,38 @@ function EventBlock({
       }}
     >
       <div className="flex items-center gap-1">
-        {/* Checkmark for completed events */}
-        {isCompleted && <span className="text-green-300">✓</span>}
-        {!isCompleted && event.icon && <span>{event.icon}</span>}
+        {/* Status icon */}
+        {statusIcon && (
+          <span className={cn(
+            "flex-shrink-0 text-xs",
+            isCompleted && "text-green-300",
+            isSkipped && "text-gray-300",
+            (isInProgress || isCurrentlyHappening) && "text-green-300",
+            isOverdue && "text-red-300",
+            isPending && !isOverdue && "text-white/60"
+          )}>
+            {statusIcon}
+          </span>
+        )}
+        {/* Domain/Category icon */}
+        {!statusIcon && event.icon && <span className="flex-shrink-0">{event.icon}</span>}
+        
+        {/* Title */}
         <span className={cn(
-          "font-medium truncate",
-          isCompleted && "line-through opacity-80"
+          "font-medium truncate flex-1",
+          isCompleted && "line-through opacity-80",
+          isSkipped && "line-through"
         )}>{event.title}</span>
+        
+        {/* Priority indicator for high priority */}
+        {event.priority === 'high' && !isCompleted && (
+          <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-400" title="Haute priorité" />
+        )}
+        
         {/* Checklist progress indicator */}
         {event.checklistTotal && event.checklistTotal > 0 && (
           <span className={cn(
-            "ml-auto text-xs font-medium px-1 rounded",
+            "ml-auto text-xs font-medium px-1 rounded flex-shrink-0",
             event.checklistCompleted === event.checklistTotal 
               ? "bg-green-500/30 text-green-200" 
               : "bg-white/20"
@@ -1023,14 +1129,23 @@ function EventBlock({
           </span>
         )}
       </div>
-      {/* Show time in compact mode if showTime=true, always show in non-compact */}
+      
+      {/* Time row */}
       {(showTime || !compact) && timeString && (
         <div className={cn(
           "flex items-center gap-2 opacity-80",
           compact ? "text-[10px]" : "text-xs",
-          isCompleted && "line-through"
+          (isCompleted || isSkipped) && "line-through"
         )}>
           <span className="truncate">{timeString}</span>
+          {/* Status badge for non-compact view */}
+          {!compact && (
+            <>
+              {isInProgress && <span className="text-[10px] bg-green-500/30 px-1 rounded">En cours</span>}
+              {isCurrentlyHappening && !isInProgress && <span className="text-[10px] bg-blue-500/30 px-1 rounded">Maintenant</span>}
+              {isOverdue && <span className="text-[10px] bg-red-500/30 px-1 rounded">En retard</span>}
+            </>
+          )}
         </div>
       )}
     </button>
