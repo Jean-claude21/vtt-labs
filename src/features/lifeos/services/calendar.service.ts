@@ -144,17 +144,31 @@ export const calendarService = {
 
       // Calculate start/end times from scheduled_start/scheduled_end
       const scheduledDate = instance.scheduled_date;
+      
+      // Parse TIME string (format: "HH:MM:SS" or "HH:MM") to extract HH:MM
+      const parseTimeStr = (timeStr: string): string => {
+        // Handle both "HH:MM:SS" and ISO datetime formats
+        const timeOnly = timeStr.includes('T') ? timeStr.split('T').pop() || timeStr : timeStr;
+        return timeOnly.substring(0, 5);
+      };
+      
       // Use scheduled_start if available, otherwise default to 09:00
       const startTimeStr = instance.scheduled_start 
-        ? instance.scheduled_start.split('T').pop()?.substring(0, 5) || '09:00'
+        ? parseTimeStr(instance.scheduled_start)
         : '09:00';
       
-      // Calculate duration from scheduled_start and scheduled_end
+      // Calculate duration from scheduled_start and scheduled_end TIME strings
       let durationMinutes = 60; // Default
       if (instance.scheduled_start && instance.scheduled_end) {
-        const startDate = new Date(instance.scheduled_start);
-        const endDate = new Date(instance.scheduled_end);
-        durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+        // Parse TIME strings (format: "HH:MM:SS") to calculate duration
+        const startParts = instance.scheduled_start.substring(0, 5).split(':').map(Number);
+        const endParts = instance.scheduled_end.substring(0, 5).split(':').map(Number);
+        
+        const startMinutes = (startParts[0] || 0) * 60 + (startParts[1] || 0);
+        const endMinutes = (endParts[0] || 0) * 60 + (endParts[1] || 0);
+        
+        durationMinutes = endMinutes - startMinutes;
+        if (durationMinutes <= 0) durationMinutes = 60; // Fallback if invalid
       }
       
       const start = new Date(`${scheduledDate}T${startTimeStr}`);

@@ -329,10 +329,21 @@ function getWeekStart(date: Date): Date {
   return new Date(d.setDate(diff));
 }
 
+/**
+ * Format date to YYYY-MM-DD in local timezone (not UTC)
+ * This is important to avoid timezone issues when comparing dates
+ */
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function filterEventsForDay(events: CalendarEvent[], date: Date): CalendarEvent[] {
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = toLocalDateString(date);
   return events.filter(event => {
-    const eventDate = event.start.toISOString().split('T')[0];
+    const eventDate = toLocalDateString(event.start);
     return eventDate === dateStr;
   });
 }
@@ -367,7 +378,7 @@ function DayView({
 }>) {
   // Generate time slots from 00:00 to 23:00
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = toLocalDateString(date);
   const [dragOverHour, setDragOverHour] = React.useState<number | null>(null);
 
   const handleDragOver = React.useCallback((e: React.DragEvent, hour: number) => {
@@ -638,11 +649,11 @@ function WeekDayCell({
   onTimeShift?: (eventId: string, shiftMinutes: number) => void;
   onCreateTaskFromRoutine?: (instanceId: string) => void;
 }>) {
-  const dayStr = day.toISOString().split('T')[0];
+  const dayStr = toLocalDateString(day);
   const [isDragOver, setIsDragOver] = React.useState(false);
   
   const dayEvents = events.filter((event) => {
-    const eventDate = event.start.toISOString().split('T')[0];
+    const eventDate = toLocalDateString(event.start);
     return eventDate === dayStr && event.start.getHours() === hour;
   });
 
@@ -812,13 +823,13 @@ function MonthView({
 
           const dayDate = new Date(year, month, day);
           const dayEvents = events.filter((event) => {
-            const eventDate = event.start.toISOString().split('T')[0];
-            const dayStr = dayDate.toISOString().split('T')[0];
+            const eventDate = toLocalDateString(event.start);
+            const dayStr = toLocalDateString(dayDate);
             return eventDate === dayStr;
           });
 
           const isToday = dayDate.toDateString() === new Date().toDateString();
-          const dateStr = dayDate.toISOString().split('T')[0];
+          const dateStr = toLocalDateString(dayDate);
 
           return (
             <MonthDayCell

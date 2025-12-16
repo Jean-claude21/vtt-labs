@@ -31,7 +31,10 @@ export async function GET() {
   const today = new Date().toISOString().split('T')[0];
   const { data: instances, error: instancesError } = await supabase
     .from('lifeos_routine_instances')
-    .select('*')
+    .select(`
+      *,
+      template:lifeos_routine_templates(name, constraints)
+    `)
     .eq('user_id', user.id)
     .eq('scheduled_date', today);
 
