@@ -561,3 +561,204 @@ export async function getTaskTimerState(
   const result = await timerService.getState(supabase, user.id, taskId);
   return result;
 }
+
+// ============================================================================
+// SUBTASKS
+// ============================================================================
+
+/**
+ * Get a task with all its subtasks
+ */
+export async function getTaskWithSubtasks(
+  taskId: string
+): Promise<ActionResult<Task & { subtasks: Task[] }>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!taskId) {
+    return { data: null, error: 'ID de tâche requis' };
+  }
+
+  // Get the parent task
+  const { data: task, error: taskError } = await supabase
+    .from('lifeos_tasks')
+    .select('*')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (taskError || !task) {
+    return { data: null, error: 'Tâche non trouvée' };
+  }
+
+  // Get all subtasks
+  const { data: subtasks, error: subtasksError } = await supabase
+    .from('lifeos_tasks')
+    .select('*')
+    .eq('parent_task_id', taskId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
+
+  if (subtasksError) {
+    return { data: null, error: subtasksError.message };
+  }
+
+  return {
+    data: {
+      ...(task as Task),
+      subtasks: (subtasks as Task[]) ?? [],
+    },
+    error: null,
+  };
+}
+
+/**
+ * Get subtasks for a task
+ */
+export async function getSubtasks(
+  parentTaskId: string
+): Promise<ActionResult<Task[]>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!parentTaskId) {
+    return { data: null, error: 'ID de tâche parent requis' };
+  }
+
+  const { data: subtasks, error } = await supabase
+    .from('lifeos_tasks')
+    .select('*')
+    .eq('parent_task_id', parentTaskId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: (subtasks as Task[]) ?? [], error: null };
+}
+
+/**
+ * Create a subtask
+ */
+export async function createSubtask(
+  parentTaskId: string,
+  input: {
+    title: string;
+    description?: string | null;
+    priority?: 'high' | 'medium' | 'low';
+    estimated_minutes?: number | null;
+    due_date?: string | null;
+  }
+): Promise<ActionResult<Task>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!parentTaskId) {
+    return { data: null, error: 'ID de tâche parent requis' };
+  }
+
+  // Get parent task to inherit project_id and domain_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: parentTask, error: parentError } = await (supabase as any)
+    .from('lifeos_tasks')
+    .select('project_id, domain_id')
+    .eq('id', parentTaskId)
+    .eq('user_id', user.id)
+    .single() as { data: { project_id: string | null; domain_id: string | null } | null; error: unknown };
+
+  if (parentError || !parentTask) {
+    return { data: null, error: 'Tâche parent non trouvée' };
+  }
+
+  // Create the subtask
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_tasks')
+    .insert({
+      user_id: user.id,
+      parent_task_id: parentTaskId,
+      project_id: parentTask.project_id,
+      domain_id: parentTask.domain_id,
+      title: input.title,
+      description: input.description ?? null,
+      priority: input.priority ?? 'medium',
+      estimated_minutes: input.estimated_minutes ?? null,
+      due_date: input.due_date ?? null,
+      status: 'todo',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: data as Task, error: null };
+}
+
+/**
+ * Toggle subtask completion
+ */
+export async function toggleSubtaskStatus(
+  subtaskId: string
+): Promise<ActionResult<Task>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  if (!subtaskId) {
+    return { data: null, error: 'ID de sous-tâche requis' };
+  }
+
+  // Get current status
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: subtask, error: getError } = await (supabase as any)
+    .from('lifeos_tasks')
+    .select('status')
+    .eq('id', subtaskId)
+    .eq('user_id', user.id)
+    .single() as { data: { status: string } | null; error: unknown };
+
+  if (getError || !subtask) {
+    return { data: null, error: 'Sous-tâche non trouvée' };
+  }
+
+  const newStatus = subtask.status === 'done' ? 'todo' : 'done';
+
+  // Update status
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lifeos_tasks')
+    .update({
+      status: newStatus,
+      completed_at: newStatus === 'done' ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subtaskId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: data as Task, error: null };
+}

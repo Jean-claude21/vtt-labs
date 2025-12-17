@@ -58,8 +58,10 @@ import {
 } from '@/components/kibo-ui/kanban';
 import type { Project } from '@/features/lifeos/schema/projects.schema';
 import type { Task } from '@/features/lifeos/schema/tasks.schema';
-import { updateTask } from '@/features/lifeos/actions/tasks.actions';
+import { updateTask, createTask } from '@/features/lifeos/actions/tasks.actions';
 import { deleteProject } from '@/features/lifeos/actions/projects.actions';
+import { TaskFormDialog } from '@/features/lifeos/components/tasks/task-form-dialog';
+import { ProjectGanttSimple } from '@/features/lifeos/components/projects/project-gantt';
 
 interface ProjectDetailDashboardProps {
   project: Project;
@@ -94,6 +96,9 @@ export function ProjectDetailDashboard({
   const [activeView, setActiveView] = React.useState<'kanban' | 'list' | 'gantt' | 'timeline'>('kanban');
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isTaskFormOpen, setIsTaskFormOpen] = React.useState(false);
+  const [isCreatingTask, setIsCreatingTask] = React.useState(false);
+  const [parentTaskForSubtask, setParentTaskForSubtask] = React.useState<string | null>(null);
 
   // Calculate progress
   const totalTasks = tasks.length;
@@ -143,6 +148,58 @@ export function ProjectDetailDashboard({
       handleTaskStatusChange(taskId, newStatus);
     }
   }, [tasks, handleTaskStatusChange]);
+
+  // Handle task creation
+  const handleCreateTask = async (data: {
+    title: string;
+    description?: string | null;
+    domain_id?: string | null;
+    project_id?: string | null;
+    parent_task_id?: string | null;
+    priority: 'high' | 'medium' | 'low';
+    estimated_minutes?: number | null;
+    due_date?: string | null;
+  }) => {
+    setIsCreatingTask(true);
+    try {
+      const result = await createTask({
+        ...data,
+        project_id: project.id,
+        parent_task_id: parentTaskForSubtask,
+      });
+
+      if (result.error) {
+        toast.error('Erreur lors de la création', { description: result.error });
+        return;
+      }
+
+      if (result.data) {
+        setTasks(prev => [...prev, result.data!]);
+        toast.success(parentTaskForSubtask ? 'Sous-tâche créée' : 'Tâche créée');
+        setIsTaskFormOpen(false);
+        setParentTaskForSubtask(null);
+        router.refresh();
+      }
+    } catch {
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
+  // Handle add subtask
+  const handleAddSubtask = (parentTaskId: string) => {
+    setParentTaskForSubtask(parentTaskId);
+    setIsTaskFormOpen(true);
+  };
+
+  // Handle task form close
+  const handleTaskFormClose = (open: boolean) => {
+    setIsTaskFormOpen(open);
+    if (!open) {
+      setParentTaskForSubtask(null);
+    }
+  };
 
   // Handle project deletion
   const handleDeleteProject = async () => {
@@ -204,7 +261,7 @@ export function ProjectDetailDashboard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsTaskFormOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter une tâche
               </DropdownMenuItem>
@@ -281,7 +338,7 @@ export function ProjectDetailDashboard({
             </TabsTrigger>
           </TabsList>
           
-          <Button size="sm">
+          <Button size="sm" onClick={() => setIsTaskFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle tâche
           </Button>
@@ -335,6 +392,17 @@ export function ProjectDetailDashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task creation dialog */}
+      <TaskFormDialog
+        open={isTaskFormOpen}
+        onOpenChange={handleTaskFormClose}
+        projectId={project.id}
+        parentTaskId={parentTaskForSubtask}
+        parentTasks={tasks.filter(t => !t.parent_task_id)}
+        onSubmit={handleCreateTask}
+        isSubmitting={isCreatingTask}
+      />
     </div>
   );
 }
@@ -531,66 +599,8 @@ function ProjectListView({ tasks }: { tasks: Task[] }) {
 // ============================================================================
 
 function ProjectGanttView({ tasks }: { tasks: Task[] }) {
-  // Filter tasks with dates for Gantt (using due_date for now until start_date is added to schema)
-  const ganttTasks = tasks.filter(t => t.due_date);
-
-  if (ganttTasks.length === 0) {
-    return (
-      <Card className="flex flex-col items-center justify-center py-12">
-        <GanttChartSquare className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium mb-2">Pas de données pour le Gantt</h3>
-        <p className="text-muted-foreground text-center max-w-sm">
-          Ajoutez des dates d&apos;échéance à vos tâches pour les visualiser dans le diagramme de Gantt.
-        </p>
-      </Card>
-    );
-  }
-
-  // TODO: Implement full Gantt with @kibo-ui/gantt
-  // For now, show a placeholder with task timeline info
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GanttChartSquare className="h-5 w-5" />
-          Diagramme de Gantt
-        </CardTitle>
-        <CardDescription>
-          Vue timeline des tâches avec leurs dépendances.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {ganttTasks.map(task => {
-            const displayDate = task.due_date;
-            
-            return (
-              <div key={task.id} className="flex items-center gap-4 p-2 rounded hover:bg-muted/50">
-                <div className="w-48 truncate font-medium">{task.title}</div>
-                <div className="flex-1 h-6 bg-muted rounded relative">
-                  <div 
-                    className={`absolute h-full rounded ${
-                      task.status === 'done' ? 'bg-green-500' :
-                      task.status === 'in_progress' ? 'bg-yellow-500' :
-                      task.status === 'blocked' ? 'bg-red-500' :
-                      'bg-blue-500'
-                    }`}
-                    style={{ width: task.status === 'done' ? '100%' : '60%' }}
-                  />
-                </div>
-                <div className="w-32 text-sm text-muted-foreground">
-                  {displayDate && new Date(displayDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-sm text-muted-foreground mt-4 text-center">
-          Vue Gantt complète avec Kibo-UI en cours d&apos;intégration...
-        </p>
-      </CardContent>
-    </Card>
-  );
+  // Use the simple Gantt visualization
+  return <ProjectGanttSimple tasks={tasks} />;
 }
 
 // ============================================================================

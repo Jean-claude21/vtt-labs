@@ -27,7 +27,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -230,8 +229,8 @@ export function ProjectForm({
                   <FormItem>
                     <FormLabel>Domaine</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ''}
+                      onValueChange={(v) => field.onChange(v === '_none' ? null : v)}
+                      value={field.value ?? '_none'}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -239,7 +238,7 @@ export function ProjectForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Aucun domaine</SelectItem>
+                        <SelectItem value="_none">Aucun domaine</SelectItem>
                         {domains.map((domain) => (
                           <SelectItem key={domain.id} value={domain.id}>
                             <div className="flex items-center gap-2">
@@ -429,9 +428,9 @@ export function ProjectForm({
               />
             </div>
 
-            <FormDescription className="text-xs">
+            <p className="text-xs text-muted-foreground">
               * Champs obligatoires
-            </FormDescription>
+            </p>
 
             <DialogFooter>
               <Button
