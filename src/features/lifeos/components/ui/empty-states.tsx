@@ -80,7 +80,7 @@ export function NoTasksState({ onCreateTask }: { onCreateTask?: () => void }) {
       action={
         onCreateTask 
           ? { label: 'Créer une tâche', onClick: onCreateTask }
-          : { label: 'Créer une tâche', href: '/app/lifeos/tasks/new' }
+          : { label: 'Créer une tâche', href: '/app/planning/tasks/new' }
       }
     />
   );
@@ -98,7 +98,7 @@ export function NoRoutinesState({ onCreateRoutine }: { onCreateRoutine?: () => v
       action={
         onCreateRoutine
           ? { label: 'Créer une routine', onClick: onCreateRoutine }
-          : { label: 'Créer une routine', href: '/app/lifeos/routines/new' }
+          : { label: 'Créer une routine', href: '/app/planning/routines/new' }
       }
     />
   );
@@ -116,7 +116,7 @@ export function NoDomainsState({ onCreateDomain }: { onCreateDomain?: () => void
       action={
         onCreateDomain
           ? { label: 'Créer un domaine', onClick: onCreateDomain }
-          : { label: 'Créer un domaine', href: '/app/lifeos/domains/new' }
+          : { label: 'Créer un domaine', href: '/app/planning/settings' }
       }
     />
   );
@@ -137,12 +137,12 @@ export function NoEventsState() {
       </p>
       <div className="flex gap-2">
         <Button variant="outline" asChild>
-          <Link href="/app/lifeos/tasks">
+          <Link href="/app/planning/tasks">
             Voir les tâches
           </Link>
         </Button>
         <Button asChild>
-          <Link href="/app/lifeos/routines">
+          <Link href="/app/planning/routines">
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle routine
           </Link>
@@ -161,7 +161,7 @@ export function NoStatsState() {
       icon={BarChart3}
       title="Pas encore de statistiques"
       description="Complétez des tâches et routines pour commencer à voir vos statistiques de productivité."
-      action={{ label: 'Aller au calendrier', href: '/app/lifeos' }}
+      action={{ label: 'Aller au calendrier', href: '/app/planning' }}
     />
   );
 }

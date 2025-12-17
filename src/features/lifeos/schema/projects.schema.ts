@@ -26,12 +26,13 @@ export type ProjectStatus = z.infer<typeof projectStatusSchema>;
 export const createProjectSchema = z.object({
   name: z
     .string()
-    .min(1, 'Name is required')
-    .max(100, 'Name must be 100 characters or less'),
+    .min(1, 'Le nom est requis')
+    .max(100, 'Le nom doit faire 100 caractères maximum'),
   description: z.string().max(2000).nullable().optional(),
-  domain_id: z.string().uuid({ message: 'Invalid domain ID' }).nullable().optional(),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
-  target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
+  domain_id: z.string().uuid({ message: 'ID de domaine invalide' }).nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Format de couleur invalide').nullable().optional(),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').nullable().optional(),
+  target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').nullable().optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
@@ -41,10 +42,11 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 // ============================================================================
 
 export const updateProjectSchema = z.object({
-  id: z.string().uuid({ message: 'Invalid project ID' }),
+  id: z.string().uuid({ message: 'ID de projet invalide' }),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(2000).nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
   status: projectStatusSchema.optional(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
@@ -75,6 +77,7 @@ export const projectSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   status: projectStatusSchema,
+  color: z.string().nullable().optional(),
   start_date: z.string().nullable(),
   target_date: z.string().nullable(),
   created_at: z.string(),
@@ -93,6 +96,7 @@ export const projectWithMetricsSchema = projectSchema.extend({
   }).nullable().optional(),
   total_tasks: z.number(),
   completed_tasks: z.number(),
+  in_progress_tasks: z.number().optional(),
   progress_percentage: z.number(),
   total_estimated_minutes: z.number(),
   total_actual_minutes: z.number(),

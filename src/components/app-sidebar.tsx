@@ -10,11 +10,10 @@ import {
   Repeat,
   FolderKanban,
   BarChart3,
-  Image,
-  HardDrive,
-  CheckSquare,
   Palette,
   ChevronRight,
+  Target,
+  Lock,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -37,6 +36,7 @@ import { useGlobal } from "@/lib/context/GlobalContext"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Badge } from "@/components/ui/badge"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, profile, isAdmin } = useGlobal()
@@ -48,29 +48,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: profile?.avatar_url || "",
   }
 
-  // Check if we're in LifeOS section
-  const isInLifeOS = pathname.startsWith('/app/lifeos')
+  // Check if we're in Planning section (supports both old /lifeos and new /planning)
+  const isInPlanning = pathname.startsWith('/app/planning') || pathname.startsWith('/app/lifeos')
+  
+  // Check if we're in OKR section (future)
+  const isInOKR = pathname.startsWith('/app/okr')
 
-  // LifeOS sub-navigation
-  const lifeosItems = [
-    { name: "Calendrier", url: "/app/lifeos", icon: CalendarDays },
-    { name: "Tâches", url: "/app/lifeos/tasks", icon: ListTodo },
-    { name: "Routines", url: "/app/lifeos/routines", icon: Repeat },
-    { name: "Projets", url: "/app/lifeos/projects", icon: FolderKanban },
-    { name: "Médias", url: "/app/lifeos/media", icon: Image },
-    { name: "Statistiques", url: "/app/lifeos/stats", icon: BarChart3 },
+  // Planning sub-navigation
+  const planningItems = [
+    { name: "Calendrier", url: "/app/planning", icon: CalendarDays },
+    { name: "Tâches", url: "/app/planning/tasks", icon: ListTodo },
+    { name: "Routines", url: "/app/planning/routines", icon: Repeat },
+    { name: "Projets", url: "/app/planning/projects", icon: FolderKanban },
+    { name: "Statistiques", url: "/app/planning/stats", icon: BarChart3 },
   ]
 
-  // Other modules
-  const otherModules = [
-    { name: "Storage", url: "/app/storage", icon: HardDrive },
-    { name: "Todo List", url: "/app/table", icon: CheckSquare },
+  // OKR sub-navigation (future - disabled)
+  const okrItems = [
+    { name: "Vue globale", url: "/app/okr", icon: Target },
+    { name: "Check-ins", url: "/app/okr/check-ins", icon: ListTodo },
   ]
 
-  // Configuration items
-  const configItems = [
-    { name: "Configuration LifeOS", url: "/app/lifeos/settings", icon: Palette },
-    { name: "Paramètres compte", url: "/app/user-settings", icon: Settings },
+  // System/Configuration items
+  const systemItems = [
+    { name: "Domaines de vie", url: "/app/settings/domains", icon: Palette },
+    { name: "Paramètres", url: "/app/user-settings", icon: Settings },
   ]
 
   return (
@@ -85,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">VTT Labs</span>
-                  <span className="truncate text-xs text-muted-foreground">Workspace</span>
+                  <span className="truncate text-xs text-muted-foreground">LifeOS</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -94,28 +96,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Dashboard */}
+        {/* Accueil */}
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/app'}>
                 <Link href="/app">
                   <Home />
-                  <span>Dashboard</span>
+                  <span>Accueil</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* LifeOS Section */}
+        {/* Modules Section */}
         <SidebarGroup>
-          <SidebarGroupLabel>LifeOS</SidebarGroupLabel>
+          <SidebarGroupLabel>Modules</SidebarGroupLabel>
           <SidebarMenu>
-            <Collapsible defaultOpen={isInLifeOS} className="group/collapsible">
+            {/* Planning Module */}
+            <Collapsible defaultOpen={isInPlanning} className="group/collapsible">
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton isActive={isInLifeOS}>
+                  <SidebarMenuButton isActive={isInPlanning}>
                     <CalendarDays />
                     <span>Planning</span>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -123,14 +126,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
-                    {lifeosItems.map((item) => (
+                    {planningItems.map((item) => (
                       <SidebarMenuSubItem key={item.name}>
                         <SidebarMenuSubButton 
                           asChild 
                           isActive={
-                            item.url === '/app/lifeos' 
-                              ? pathname === '/app/lifeos'
-                              : pathname.startsWith(item.url)
+                            item.url === '/app/planning' 
+                              ? pathname === '/app/planning' || pathname === '/app/lifeos'
+                              : pathname.startsWith(item.url) || pathname.startsWith(item.url.replace('/planning', '/lifeos'))
                           }
                         >
                           <Link href={item.url}>
@@ -144,33 +147,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
-          </SidebarMenu>
-        </SidebarGroup>
 
-        {/* Other Modules */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Autres Modules</SidebarGroupLabel>
-          <SidebarMenu>
-            {otherModules.map((item) => (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith(item.url)}>
-                  <Link href={item.url}>
-                    <item.icon />
-                    <span>{item.name}</span>
-                  </Link>
-                </SidebarMenuButton>
+            {/* OKR Module - Coming Soon */}
+            <Collapsible defaultOpen={isInOKR} className="group/collapsible">
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton 
+                    isActive={isInOKR} 
+                    className="opacity-60 cursor-not-allowed"
+                    disabled
+                  >
+                    <Target />
+                    <span>OKR</span>
+                    <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">
+                      Bientôt
+                    </Badge>
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {okrItems.map((item) => (
+                      <SidebarMenuSubItem key={item.name}>
+                        <SidebarMenuSubButton 
+                          className="opacity-50 cursor-not-allowed"
+                        >
+                          <Lock className="h-3 w-3" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
               </SidebarMenuItem>
-            ))}
+            </Collapsible>
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Configuration */}
+        {/* System Section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+          <SidebarGroupLabel>Système</SidebarGroupLabel>
           <SidebarMenu>
-            {configItems.map((item) => (
+            {systemItems.map((item) => (
               <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild isActive={pathname === item.url}>
+                <SidebarMenuButton asChild isActive={pathname === item.url || pathname.startsWith(item.url)}>
                   <Link href={item.url}>
                     <item.icon />
                     <span>{item.name}</span>

@@ -163,6 +163,115 @@ export async function getProjectWithMetrics(
 }
 
 /**
+ * Get all projects with progress metrics for listing
+ */
+export async function getProjectsWithProgress(
+  filters?: ProjectFilters
+): Promise<ActionResult<ProjectWithMetrics[]>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // Validate filters if provided
+  if (filters) {
+    const parsed = projectFiltersSchema.safeParse(filters);
+    if (!parsed.success) {
+      return { data: null, error: 'Filtres invalides' };
+    }
+  }
+
+  // Get projects with domain info
+  let query = supabase
+    .from('lifeos_projects')
+    .select(`
+      *,
+      domain:lifeos_domains(id, name, color, icon)
+    `)
+    .eq('user_id', user.id);
+
+  if (filters?.domain_id) {
+    query = query.eq('domain_id', filters.domain_id);
+  }
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters?.statuses && filters.statuses.length > 0) {
+    query = query.in('status', filters.statuses);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data: projectsRaw, error: projectsError } = await query;
+
+  if (projectsError) {
+    return { data: null, error: projectsError.message };
+  }
+
+  // Type assertion for the query result
+  type ProjectWithDomain = Project & {
+    domain?: { id: string; name: string; color: string; icon: string } | null;
+  };
+  const projects = projectsRaw as ProjectWithDomain[] | null;
+
+  if (!projects || projects.length === 0) {
+    return { data: [], error: null };
+  }
+
+  // Get task counts for all projects in one query
+  const projectIds = projects.map(p => p.id);
+  const { data: taskCountsRaw, error: tasksError } = await supabase
+    .from('lifeos_tasks')
+    .select('project_id, status')
+    .in('project_id', projectIds)
+    .eq('user_id', user.id)
+    .not('status', 'in', '("cancelled","archived")');
+
+  if (tasksError) {
+    return { data: null, error: tasksError.message };
+  }
+
+  // Type assertion for task counts
+  type TaskCount = { project_id: string | null; status: string };
+  const taskCounts = taskCountsRaw as TaskCount[] | null;
+
+  // Calculate metrics per project
+  const metricsMap = new Map<string, { total: number; completed: number; inProgress: number }>();
+  
+  for (const task of taskCounts ?? []) {
+    if (!task.project_id) continue;
+    
+    const current = metricsMap.get(task.project_id) ?? { total: 0, completed: 0, inProgress: 0 };
+    current.total++;
+    if (task.status === 'done') current.completed++;
+    if (task.status === 'in_progress') current.inProgress++;
+    metricsMap.set(task.project_id, current);
+  }
+
+  // Combine projects with metrics
+  const projectsWithMetrics: ProjectWithMetrics[] = projects.map(project => {
+    const metrics = metricsMap.get(project.id) ?? { total: 0, completed: 0, inProgress: 0 };
+    const progressPercentage = metrics.total > 0 
+      ? Math.round((metrics.completed / metrics.total) * 100) 
+      : 0;
+
+    return {
+      ...project,
+      total_tasks: metrics.total,
+      completed_tasks: metrics.completed,
+      in_progress_tasks: metrics.inProgress,
+      progress_percentage: progressPercentage,
+      total_estimated_minutes: 0, // Would require additional query
+      total_actual_minutes: 0,
+    } as ProjectWithMetrics;
+  });
+
+  return { data: projectsWithMetrics, error: null };
+}
+
+/**
  * Create a new project
  */
 export async function createProject(
@@ -170,6 +279,7 @@ export async function createProject(
     name: string;
     description?: string | null;
     domain_id?: string | null;
+    color?: string | null;
     start_date?: string | null;
     target_date?: string | null;
   }
@@ -378,4 +488,46 @@ export async function getTaskDependencies(
 
   const result = await dependenciesService.getByTask(supabase, taskId);
   return result;
+}
+
+/**
+ * Get all tasks for a project
+ */
+export async function getProjectTasks(
+  projectId: string
+): Promise<ActionResult<import('../schema/tasks.schema').Task[]>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  // Verify project belongs to user
+  const { data: project, error: projectError } = await supabase
+    .from('lifeos_projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (projectError || !project) {
+    return { data: null, error: 'Projet non trouvé' };
+  }
+
+  const { data: tasks, error } = await supabase
+    .from('lifeos_tasks')
+    .select(`
+      *,
+      domain:lifeos_domains(id, name, color, icon)
+    `)
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: tasks as import('../schema/tasks.schema').Task[], error: null };
 }
