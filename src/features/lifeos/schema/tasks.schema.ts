@@ -69,6 +69,7 @@ export const updateTaskSchema = z.object({
   domain_id: z.string().uuid().nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
   parent_task_id: z.string().uuid().nullable().optional(),
+  status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
   estimated_minutes: z.number().int().positive().nullable().optional(),
   actual_minutes: z.number().int().nonnegative().optional(),

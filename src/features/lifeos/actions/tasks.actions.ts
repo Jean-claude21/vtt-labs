@@ -373,6 +373,34 @@ export async function getUnscheduledTasks(): Promise<ActionResult<Task[]>> {
 }
 
 /**
+ * Get orphan tasks (tasks without project_id)
+ * These are tasks that can be assigned to a project
+ */
+export async function getOrphanTasks(): Promise<ActionResult<Task[]>> {
+  const supabase = await createSSRClient();
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { data: null, error: 'Non authentifié' };
+  }
+
+  const { data, error } = await supabase
+    .from('lifeos_tasks')
+    .select('*')
+    .eq('user_id', user.id)
+    .is('project_id', null)
+    .is('parent_task_id', null) // Only root tasks, not subtasks
+    .not('status', 'in', '(done,archived,cancelled)')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: data ?? [], error: null };
+}
+
+/**
  * Schedule a task on the calendar
  * Sets scheduled_date and scheduled_time for a task
  */

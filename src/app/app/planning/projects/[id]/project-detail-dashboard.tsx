@@ -32,6 +32,8 @@ import {
   Circle,
   AlertCircle,
   Pause,
+  Table2,
+  Link2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -58,10 +60,12 @@ import {
 } from '@/components/kibo-ui/kanban';
 import type { Project } from '@/features/lifeos/schema/projects.schema';
 import type { Task } from '@/features/lifeos/schema/tasks.schema';
-import { updateTask, createTask } from '@/features/lifeos/actions/tasks.actions';
+import { updateTask, createTask, deleteTask } from '@/features/lifeos/actions/tasks.actions';
 import { deleteProject } from '@/features/lifeos/actions/projects.actions';
 import { TaskFormDialog } from '@/features/lifeos/components/tasks/task-form-dialog';
-import { ProjectGanttSimple } from '@/features/lifeos/components/projects/project-gantt';
+import { AssignTaskDialog } from '@/features/lifeos/components/tasks/assign-task-dialog';
+import { ProjectGanttFull } from '@/features/lifeos/components/projects/project-gantt-full';
+import { TasksTable } from '@/features/lifeos/components/tasks/tasks-table';
 
 interface ProjectDetailDashboardProps {
   project: Project;
@@ -93,12 +97,15 @@ export function ProjectDetailDashboard({
   const router = useRouter();
   const [project] = React.useState(initialProject);
   const [tasks, setTasks] = React.useState(initialTasks);
-  const [activeView, setActiveView] = React.useState<'kanban' | 'list' | 'gantt' | 'timeline'>('kanban');
+  const [activeView, setActiveView] = React.useState<'kanban' | 'list' | 'gantt' | 'timeline' | 'table'>('kanban');
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = React.useState(false);
   const [isCreatingTask, setIsCreatingTask] = React.useState(false);
   const [parentTaskForSubtask, setParentTaskForSubtask] = React.useState<string | null>(null);
+  const [taskToEdit, setTaskToEdit] = React.useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = React.useState<Task | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
 
   // Calculate progress
   const totalTasks = tasks.length;
@@ -198,8 +205,95 @@ export function ProjectDetailDashboard({
     setIsTaskFormOpen(open);
     if (!open) {
       setParentTaskForSubtask(null);
+      setTaskToEdit(null);
     }
   };
+
+  // Handle task click for editing
+  const handleTaskClick = React.useCallback((task: Task) => {
+    setTaskToEdit(task);
+    setIsTaskFormOpen(true);
+  }, []);
+
+  // Handle task update (edit mode)
+  const handleUpdateTask = async (data: {
+    title: string;
+    description?: string | null;
+    domain_id?: string | null;
+    project_id?: string | null;
+    parent_task_id?: string | null;
+    priority: 'high' | 'medium' | 'low';
+    estimated_minutes?: number | null;
+    due_date?: string | null;
+  }) => {
+    if (!taskToEdit) return;
+    
+    setIsCreatingTask(true);
+    try {
+      const result = await updateTask({
+        id: taskToEdit.id,
+        ...data,
+      });
+
+      if (result.error) {
+        toast.error('Erreur lors de la mise à jour', { description: result.error });
+        return;
+      }
+
+      if (result.data) {
+        setTasks(prev => prev.map(t => t.id === taskToEdit.id ? result.data! : t));
+        toast.success('Tâche mise à jour');
+        setIsTaskFormOpen(false);
+        setTaskToEdit(null);
+        router.refresh();
+      }
+    } catch {
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
+  // Refresh tasks after Gantt drag
+  const handleGanttTaskUpdate = React.useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  // Handle task deletion
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
+    
+    try {
+      const result = await deleteTask(taskToDelete.id);
+      
+      if (result.error) {
+        toast.error('Erreur', { description: result.error });
+        return;
+      }
+      
+      setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+      toast.success('Tâche supprimée');
+      setTaskToDelete(null);
+      router.refresh();
+    } catch {
+      toast.error('Une erreur est survenue');
+    }
+  };
+
+  // Handle status change from table
+  const handleStatusChange = React.useCallback(async (taskId: string, status: Task['status']) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, status } : t
+    ));
+
+    const result = await updateTask({ id: taskId, status });
+    
+    if (result.error) {
+      setTasks(initialTasks);
+      toast.error('Erreur', { description: result.error });
+    }
+  }, [initialTasks]);
 
   // Handle project deletion
   const handleDeleteProject = async () => {
@@ -264,6 +358,10 @@ export function ProjectDetailDashboard({
               <DropdownMenuItem onClick={() => setIsTaskFormOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter une tâche
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsAssignDialogOpen(true)}>
+                <Link2 className="h-4 w-4 mr-2" />
+                Affecter des tâches existantes
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -336,6 +434,10 @@ export function ProjectDetailDashboard({
               <Clock className="h-4 w-4" />
               Timeline
             </TabsTrigger>
+            <TabsTrigger value="table" className="gap-2">
+              <Table2 className="h-4 w-4" />
+              Tableau
+            </TabsTrigger>
           </TabsList>
           
           <Button size="sm" onClick={() => setIsTaskFormOpen(true)}>
@@ -348,23 +450,45 @@ export function ProjectDetailDashboard({
           <ProjectKanbanView 
             tasks={tasks} 
             onDragEnd={handleKanbanDragEnd}
+            onTaskClick={handleTaskClick}
           />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ProjectListView tasks={tasks} />
+          <ProjectListView 
+            tasks={tasks} 
+            onTaskClick={handleTaskClick}
+          />
         </TabsContent>
 
         <TabsContent value="gantt" className="mt-4">
-          <ProjectGanttView tasks={tasks} />
+          <ProjectGanttView 
+            projectId={project.id}
+            tasks={tasks} 
+            onTaskUpdate={handleGanttTaskUpdate}
+            onTaskClick={handleTaskClick}
+          />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
-          <ProjectTimelineView tasks={tasks} />
+          <ProjectTimelineView 
+            tasks={tasks}
+            onTaskClick={handleTaskClick}
+          />
+        </TabsContent>
+
+        <TabsContent value="table" className="mt-4">
+          <TasksTable
+            tasks={tasks}
+            onTaskClick={handleTaskClick}
+            onTaskDelete={(task) => setTaskToDelete(task)}
+            onStatusChange={handleStatusChange}
+            showParentColumn={true}
+          />
         </TabsContent>
       </Tabs>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete project confirmation dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -393,16 +517,52 @@ export function ProjectDetailDashboard({
         </DialogContent>
       </Dialog>
 
-      {/* Task creation dialog */}
+      {/* Task creation/edit dialog */}
       <TaskFormDialog
         open={isTaskFormOpen}
         onOpenChange={handleTaskFormClose}
+        task={taskToEdit}
         projectId={project.id}
         parentTaskId={parentTaskForSubtask}
         parentTasks={tasks.filter(t => !t.parent_task_id)}
-        onSubmit={handleCreateTask}
+        onSubmit={taskToEdit ? handleUpdateTask : handleCreateTask}
         isSubmitting={isCreatingTask}
       />
+
+      {/* Assign existing tasks dialog */}
+      <AssignTaskDialog
+        open={isAssignDialogOpen}
+        onOpenChange={setIsAssignDialogOpen}
+        project={project}
+        onTaskAssigned={() => router.refresh()}
+      />
+
+      {/* Task delete confirmation dialog */}
+      <Dialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer la tâche</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer la tâche &quot;{taskToDelete?.title}&quot; ?
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setTaskToDelete(null)}
+            >
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteTask}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -425,9 +585,10 @@ type KanbanTaskItem = {
 interface ProjectKanbanViewProps {
   tasks: Task[];
   onDragEnd: (event: DragEndEvent) => void;
+  onTaskClick: (task: Task) => void;
 }
 
-function ProjectKanbanView({ tasks, onDragEnd }: ProjectKanbanViewProps) {
+function ProjectKanbanView({ tasks, onDragEnd, onTaskClick }: Readonly<ProjectKanbanViewProps>) {
   // Transform tasks to Kanban format
   const kanbanData: KanbanTaskItem[] = React.useMemo(() => 
     tasks.map(task => ({
@@ -482,33 +643,43 @@ function ProjectKanbanView({ tasks, onDragEnd }: ProjectKanbanViewProps) {
                 </Badge>
               </KanbanHeader>
               <KanbanCards<KanbanTaskItem> id={column.id}>
-                {(item) => (
-                  <KanbanCard key={item.id} id={item.id} name={item.name} column={item.column}>
-                    <div className="space-y-2">
-                      <p className="font-medium text-sm">{item.name}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {item.priority && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              item.priority === 'high' ? 'border-red-500 text-red-500' :
-                              item.priority === 'low' ? 'border-gray-400 text-gray-400' :
-                              'border-blue-500 text-blue-500'
-                            }`}
-                          >
-                            {item.priority}
-                          </Badge>
-                        )}
-                        {item.due_date && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(item.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                          </span>
-                        )}
+                {(item) => {
+                  const originalTask = tasks.find(t => t.id === item.id);
+                  return (
+                    <KanbanCard 
+                      key={item.id} 
+                      id={item.id} 
+                      name={item.name} 
+                      column={item.column}
+                      onClick={() => originalTask && onTaskClick(originalTask)}
+                      className="cursor-pointer"
+                    >
+                      <div className="space-y-2">
+                        <p className="font-medium text-sm">{item.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {item.priority && (
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                item.priority === 'high' ? 'border-red-500 text-red-500' :
+                                item.priority === 'low' ? 'border-gray-400 text-gray-400' :
+                                'border-blue-500 text-blue-500'
+                              }`}
+                            >
+                              {item.priority}
+                            </Badge>
+                          )}
+                          {item.due_date && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(item.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </KanbanCard>
-                )}
+                    </KanbanCard>
+                  );
+                }}
               </KanbanCards>
             </KanbanBoard>
           );
@@ -522,7 +693,12 @@ function ProjectKanbanView({ tasks, onDragEnd }: ProjectKanbanViewProps) {
 // LIST VIEW
 // ============================================================================
 
-function ProjectListView({ tasks }: { tasks: Task[] }) {
+interface ProjectListViewProps {
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+}
+
+function ProjectListView({ tasks, onTaskClick }: Readonly<ProjectListViewProps>) {
   if (tasks.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center py-12">
@@ -558,33 +734,42 @@ function ProjectListView({ tasks }: { tasks: Task[] }) {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
-                {group.tasks.map(task => (
-                  <div key={task.id} className="px-4 py-3 flex items-center gap-4 hover:bg-muted/50">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{task.title}</p>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                {group.tasks.map(task => {
+                  const priorityClass = task.priority === 'high' 
+                    ? 'border-red-500 text-red-500' 
+                    : task.priority === 'low' 
+                      ? 'border-gray-400 text-gray-400' 
+                      : '';
+                  
+                  return (
+                    <button 
+                      key={task.id} 
+                      type="button"
+                      className="w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-muted/50 cursor-pointer"
+                      onClick={() => onTaskClick(task)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{task.title}</p>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                        )}
+                      </div>
+                      {task.priority && (
+                        <Badge 
+                          variant="outline"
+                          className={priorityClass}
+                        >
+                          {task.priority}
+                        </Badge>
                       )}
-                    </div>
-                    {task.priority && (
-                      <Badge 
-                        variant="outline"
-                        className={
-                          task.priority === 'high' ? 'border-red-500 text-red-500' :
-                          task.priority === 'low' ? 'border-gray-400 text-gray-400' :
-                          ''
-                        }
-                      >
-                        {task.priority}
-                      </Badge>
-                    )}
-                    {task.due_date && (
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(task.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      {task.due_date && (
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {new Date(task.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -598,16 +783,35 @@ function ProjectListView({ tasks }: { tasks: Task[] }) {
 // GANTT VIEW
 // ============================================================================
 
-function ProjectGanttView({ tasks }: { tasks: Task[] }) {
-  // Use the simple Gantt visualization
-  return <ProjectGanttSimple tasks={tasks} />;
+interface ProjectGanttViewProps {
+  projectId: string;
+  tasks: Task[];
+  onTaskUpdate: () => void;
+  onTaskClick: (task: Task) => void;
+}
+
+function ProjectGanttView({ projectId, tasks, onTaskUpdate, onTaskClick }: Readonly<ProjectGanttViewProps>) {
+  // Use the full Gantt with Kibo-UI, drag & drop, and dependencies
+  return (
+    <ProjectGanttFull 
+      projectId={projectId}
+      tasks={tasks} 
+      onTaskUpdate={onTaskUpdate}
+      onTaskClick={onTaskClick}
+    />
+  );
 }
 
 // ============================================================================
 // TIMELINE VIEW
 // ============================================================================
 
-function ProjectTimelineView({ tasks }: { tasks: Task[] }) {
+interface ProjectTimelineViewProps {
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+}
+
+function ProjectTimelineView({ tasks, onTaskClick }: Readonly<ProjectTimelineViewProps>) {
   // Sort tasks by date
   const sortedTasks = [...tasks]
     .filter(t => t.due_date || t.created_at)
@@ -649,20 +853,27 @@ function ProjectTimelineView({ tasks }: { tasks: Task[] }) {
             {sortedTasks.map((task) => {
               const statusConfig = TASK_STATUSES.find(s => s.id === task.status);
               const StatusIcon = statusConfig?.icon || Circle;
+              const dotBgClass = task.status === 'done' 
+                ? 'bg-green-500' 
+                : task.status === 'in_progress' 
+                  ? 'bg-yellow-500' 
+                  : task.status === 'blocked' 
+                    ? 'bg-red-500' 
+                    : 'bg-muted';
               
               return (
-                <div key={task.id} className="relative pl-10">
+                <button 
+                  key={task.id} 
+                  type="button"
+                  className="relative pl-10 cursor-pointer group text-left w-full"
+                  onClick={() => onTaskClick(task)}
+                >
                   {/* Timeline dot */}
-                  <div className={`absolute left-2 top-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center ${
-                    task.status === 'done' ? 'bg-green-500' :
-                    task.status === 'in_progress' ? 'bg-yellow-500' :
-                    task.status === 'blocked' ? 'bg-red-500' :
-                    'bg-muted'
-                  }`}>
+                  <div className={`absolute left-2 top-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center ${dotBgClass}`}>
                     <StatusIcon className="h-3 w-3 text-white" />
                   </div>
                   
-                  <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="bg-muted/50 rounded-lg p-3 group-hover:bg-muted transition-colors">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium">{task.title}</span>
                       <span className="text-sm text-muted-foreground">
@@ -677,7 +888,7 @@ function ProjectTimelineView({ tasks }: { tasks: Task[] }) {
                       <p className="text-sm text-muted-foreground">{task.description}</p>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

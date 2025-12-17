@@ -402,43 +402,63 @@ export function TaskFormDialog({
               />
             )}
 
-            {/* Parent task - only show if selecting subtask parent */}
-            {!parentTaskId && !isEditing && parentTasks.length > 0 && (
-              <FormField
-                control={form.control}
-                name="parent_task_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tâche parente (optionnel)</FormLabel>
-                    <Select
-                      onValueChange={(v) => field.onChange(v === '_none' ? null : v)}
-                      value={field.value ?? '_none'}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Aucune (tâche principale)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="_none">Aucune (tâche principale)</SelectItem>
-                        {parentTasks.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            <span className="flex items-center gap-2">
-                              <ListTodo className="h-4 w-4" />
-                              <span className="truncate max-w-[250px]">{t.title}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Créez une sous-tâche en sélectionnant une tâche parente
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* Parent task - show for creating subtask or editing to change parent */}
+            {(() => {
+              // Don't show if parentTaskId is pre-filled (creating a subtask from parent context)
+              if (parentTaskId) return null;
+              
+              // Filter out the current task if editing (can't be its own parent)
+              // Also filter out tasks that are subtasks of the current task to avoid circular references
+              const availableParents = isEditing 
+                ? parentTasks.filter(t => t.id !== task?.id && t.parent_task_id !== task?.id)
+                : parentTasks;
+              
+              // Always show if editing (to allow changing/removing parent), 
+              // or if there are available parents for new tasks
+              const shouldShow = isEditing || availableParents.length > 0;
+              
+              if (!shouldShow) return null;
+              
+              return (
+                <FormField
+                  control={form.control}
+                  name="parent_task_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tâche parente</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === '_none' ? null : v)}
+                        value={field.value ?? '_none'}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Aucune (tâche principale)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="_none">Aucune (tâche principale)</SelectItem>
+                          {availableParents.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              <span className="flex items-center gap-2">
+                                <ListTodo className="h-4 w-4" />
+                                <span className="truncate max-w-[250px]">{t.title}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {isEditing 
+                          ? 'Modifiez la tâche parente ou retirez-la pour en faire une tâche principale'
+                          : 'Créez une sous-tâche en sélectionnant une tâche parente'
+                        }
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              );
+            })()}
 
             <DialogFooter>
               <Button
